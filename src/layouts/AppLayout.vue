@@ -13,7 +13,7 @@ import {
   X,
 } from '@lucide/vue'
 import { onMounted, ref } from 'vue'
-import { RouterLink, RouterView } from 'vue-router'
+import { RouterLink, RouterView, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
@@ -34,10 +34,16 @@ const mobileOpen = ref(false)
 const auth = useAuthStore()
 const theme = useThemeStore()
 const workspace = useWorkspaceStore()
+const router = useRouter()
 
 onMounted(() => {
   void workspace.load()
 })
+
+const logout = async () => {
+  await auth.logout()
+  await router.push('/auth/login')
+}
 </script>
 
 <template>
@@ -90,6 +96,7 @@ onMounted(() => {
             <p class="text-sm font-medium">{{ auth.user?.name }}</p>
             <p class="text-xs text-slate-500">{{ auth.user?.email }}</p>
           </div>
+          <button class="btn-muted" type="button" @click="logout">Çıkış</button>
         </div>
       </header>
 
