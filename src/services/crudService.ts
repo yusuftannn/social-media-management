@@ -1,4 +1,18 @@
 import { createId } from '@/utils/id'
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  orderBy,
+  query,
+  updateDoc,
+  type DocumentData,
+  type Firestore,
+  type UpdateData,
+} from 'firebase/firestore'
 
 export interface CrudRepository<T extends { id: string }> {
   list(): Promise<T[]>
@@ -35,6 +49,41 @@ export const createMemoryRepository = <T extends { id: string }>(
     },
     async remove(id) {
       items = items.filter((item) => item.id !== id)
+    },
+  }
+}
+
+export const createFirestoreRepository = <T extends { id: string }>(
+  db: Firestore,
+  collectionName: string,
+): CrudRepository<T> => {
+  const collectionRef = collection(db, collectionName)
+
+  const withId = (id: string, data: Record<string, unknown>) => ({ id, ...data }) as T
+
+  return {
+    async list() {
+      const snapshot = await getDocs(query(collectionRef, orderBy('createdAt', 'desc')))
+      return snapshot.docs.map((entry) => withId(entry.id, entry.data()))
+    },
+    async get(id) {
+      const snapshot = await getDoc(doc(db, collectionName, id))
+      if (!snapshot.exists()) return undefined
+      return withId(snapshot.id, snapshot.data())
+    },
+    async create(payload) {
+      const snapshot = await addDoc(collectionRef, payload)
+      return withId(snapshot.id, payload)
+    },
+    async update(id, payload) {
+      const docRef = doc(db, collectionName, id)
+      await updateDoc(docRef, payload as UpdateData<DocumentData>)
+      const snapshot = await getDoc(docRef)
+      if (!snapshot.exists()) throw new Error('Record not found')
+      return withId(snapshot.id, snapshot.data())
+    },
+    async remove(id) {
+      await deleteDoc(doc(db, collectionName, id))
     },
   }
 }
