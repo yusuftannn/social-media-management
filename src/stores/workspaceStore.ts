@@ -50,6 +50,20 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     customers.value = customers.value.filter((customer) => customer.id !== id)
   }
 
+  const addProject = async (payload: Omit<Project, 'id'>) => {
+    projects.value = [await projectRepository.create(payload), ...projects.value]
+  }
+
+  const updateProject = async (id: string, payload: Partial<Project>) => {
+    const updated = await projectRepository.update(id, payload)
+    projects.value = projects.value.map((project) => (project.id === id ? updated : project))
+  }
+
+  const removeProject = async (id: string) => {
+    await projectRepository.remove(id)
+    projects.value = projects.value.filter((project) => project.id !== id)
+  }
+
   const addTask = async (payload: Omit<Task, 'id'>) => {
     tasks.value = [await taskRepository.create(payload), ...tasks.value]
   }
@@ -66,6 +80,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     addCustomer,
     updateCustomer,
     removeCustomer,
+    addProject,
+    updateProject,
+    removeProject,
     addTask,
   }
 })

@@ -32,6 +32,7 @@ export const projects: Project[] = [
     status: 'Active',
     startDate: '2026-04-01',
     endDate: '2026-06-30',
+    createdAt: '2026-04-01',
   },
   {
     id: 'prj_2',
@@ -41,6 +42,7 @@ export const projects: Project[] = [
     status: 'Pending',
     startDate: '2026-06-03',
     endDate: '2026-08-31',
+    createdAt: '2026-05-28',
   },
 ]
 

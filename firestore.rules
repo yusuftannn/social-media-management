@@ -14,5 +14,9 @@ service cloud.firestore {
     match /customers/{customerId} {
       allow read, create, update, delete: if signedIn();
     }
+
+    match /projects/{projectId} {
+      allow read, create, update, delete: if signedIn();
+    }
   }
 }
