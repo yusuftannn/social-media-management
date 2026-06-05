@@ -18,5 +18,9 @@ service cloud.firestore {
     match /projects/{projectId} {
       allow read, create, update, delete: if signedIn();
     }
+
+    match /team/{memberId} {
+      allow read, create, update, delete: if signedIn();
+    }
   }
 }

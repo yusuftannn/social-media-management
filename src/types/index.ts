@@ -63,4 +63,5 @@ export interface TeamMember {
   email: string
   role: 'Designer' | 'Developer' | 'Social Media Manager' | 'Content Creator'
   avatar?: string
+  createdAt?: string
 }
