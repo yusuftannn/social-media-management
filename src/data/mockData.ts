@@ -56,6 +56,7 @@ export const contents: SocialContent[] = [
     description: 'Ürün odaklı kısa video.',
     publishDate: '2026-06-05',
     status: 'Waiting Approval',
+    createdAt: '2026-05-30',
   },
   {
     id: 'cnt_2',
@@ -66,6 +67,7 @@ export const contents: SocialContent[] = [
     description: 'Ajans kurucusu imzalı bilgi serisi.',
     publishDate: '2026-06-08',
     status: 'Draft',
+    createdAt: '2026-06-01',
   },
 ]
 

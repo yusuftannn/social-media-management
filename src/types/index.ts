@@ -45,6 +45,7 @@ export interface SocialContent {
   description: string
   publishDate: string
   status: ContentStatus
+  createdAt: string
 }
 
 export interface Task {

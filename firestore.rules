@@ -19,6 +19,10 @@ service cloud.firestore {
       allow read, create, update, delete: if signedIn();
     }
 
+    match /contents/{contentId} {
+      allow read, create, update, delete: if signedIn();
+    }
+
     match /team/{memberId} {
       allow read, create, update, delete: if signedIn();
     }
