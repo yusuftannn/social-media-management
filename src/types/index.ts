@@ -56,6 +56,7 @@ export interface Task {
   priority: Priority
   dueDate: string
   status: TaskStatus
+  createdAt: string
 }
 
 export interface TeamMember {

@@ -23,6 +23,10 @@ service cloud.firestore {
       allow read, create, update, delete: if signedIn();
     }
 
+    match /tasks/{taskId} {
+      allow read, create, update, delete: if signedIn();
+    }
+
     match /team/{memberId} {
       allow read, create, update, delete: if signedIn();
     }

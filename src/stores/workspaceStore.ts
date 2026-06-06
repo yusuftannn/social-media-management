@@ -82,6 +82,16 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     tasks.value = [await taskRepository.create(payload), ...tasks.value]
   }
 
+  const updateTask = async (id: string, payload: Partial<Task>) => {
+    const updated = await taskRepository.update(id, payload)
+    tasks.value = tasks.value.map((task) => (task.id === id ? updated : task))
+  }
+
+  const removeTask = async (id: string) => {
+    await taskRepository.remove(id)
+    tasks.value = tasks.value.filter((task) => task.id !== id)
+  }
+
   const addTeamMember = async (payload: Omit<TeamMember, 'id'>) => {
     team.value = [await teamRepository.create(payload), ...team.value]
   }
@@ -115,6 +125,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     updateContent,
     removeContent,
     addTask,
+    updateTask,
+    removeTask,
     addTeamMember,
     updateTeamMember,
     removeTeamMember,

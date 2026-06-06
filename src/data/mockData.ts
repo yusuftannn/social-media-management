@@ -80,6 +80,7 @@ export const tasks: Task[] = [
     priority: 'High',
     dueDate: '2026-06-02',
     status: 'In Progress',
+    createdAt: '2026-05-30',
   },
   {
     id: 'tsk_2',
@@ -89,6 +90,7 @@ export const tasks: Task[] = [
     priority: 'Medium',
     dueDate: '2026-06-06',
     status: 'To Do',
+    createdAt: '2026-06-01',
   },
 ]
 
