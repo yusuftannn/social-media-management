@@ -5,16 +5,71 @@ import StatCard from '@/components/ui/StatCard.vue'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 
 const workspace = useWorkspaceStore()
+
 const completedTasks = computed(() => workspace.tasks.filter((task) => task.status === 'Done').length)
-const chartOptions = {
-  chart: { toolbar: { show: false } },
-  colors: ['#2563eb', '#10b981'],
-  xaxis: { categories: ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran'] },
+
+const parseDate = (value?: string) => {
+  if (!value) return null
+
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
 }
-const chartSeries = [
-  { name: 'Müşteri', data: [4, 6, 7, 10, 12, 15] },
-  { name: 'İçerik', data: [18, 24, 31, 40, 48, 56] },
-]
+
+const monthKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+
+const recentMonths = computed(() => {
+  const today = new Date()
+
+  return Array.from({ length: 6 }, (_, index) => {
+    const date = new Date(today.getFullYear(), today.getMonth() - (5 - index), 1)
+
+    return {
+      key: monthKey(date),
+      label: new Intl.DateTimeFormat('tr-TR', { month: 'short' }).format(date),
+    }
+  })
+})
+
+const countRecordsByMonth = <T>(items: T[], getDateValue: (item: T) => string | undefined) =>
+  recentMonths.value.map(({ key }) => {
+    return items.filter((item) => {
+      const date = parseDate(getDateValue(item))
+      return date ? monthKey(date) === key : false
+    }).length
+  })
+
+const customerGrowthByMonth = computed(() =>
+  countRecordsByMonth(workspace.customers, (customer) => customer.createdAt),
+)
+
+const contentProductionByMonth = computed(() =>
+  countRecordsByMonth(workspace.contents, (content) => content.publishDate || content.createdAt),
+)
+
+const chartOptions = computed(() => ({
+  chart: {
+    toolbar: { show: false },
+    fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+  },
+  colors: ['#2563eb', '#10b981'],
+  dataLabels: { enabled: false },
+  fill: {
+    type: 'gradient',
+    gradient: { shadeIntensity: 0.2, opacityFrom: 0.35, opacityTo: 0.05 },
+  },
+  grid: { borderColor: '#e2e8f0', strokeDashArray: 4 },
+  legend: { position: 'bottom' },
+  noData: { text: workspace.loading ? 'Veriler yükleniyor' : 'Grafik için veri yok' },
+  stroke: { curve: 'smooth', width: 3 },
+  tooltip: { theme: 'light' },
+  xaxis: { categories: recentMonths.value.map((month) => month.label) },
+  yaxis: { min: 0, tickAmount: 4 },
+}))
+
+const chartSeries = computed(() => [
+  { name: 'Müşteri', data: customerGrowthByMonth.value },
+  { name: 'İçerik', data: contentProductionByMonth.value },
+])
 </script>
 
 <template>
