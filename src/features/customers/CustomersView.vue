@@ -92,7 +92,8 @@ const submitCustomer = async () => {
       })
     }
 
-    closeModal()
+    isModalOpen.value = false
+    resetForm()
   } catch {
     error.value = 'Müşteri kaydı Firebase üzerine yazılamadı.'
   } finally {

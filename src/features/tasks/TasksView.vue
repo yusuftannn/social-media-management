@@ -111,7 +111,8 @@ const submitTask = async () => {
       })
     }
 
-    closeModal()
+    isModalOpen.value = false
+    resetForm()
   } catch {
     error.value = 'Görev kaydı Firebase üzerine yazılamadı.'
   } finally {
@@ -146,17 +147,31 @@ const deleteTask = async (task: Task) => {
     {{ error || workspace.error }}
   </p>
 
-  <div v-if="workspace.loading" class="panel p-6 text-sm text-slate-500">Görevler yükleniyor...</div>
+  <div v-if="workspace.loading" class="panel p-6 text-sm text-slate-500">
+    Görevler yükleniyor...
+  </div>
   <div v-else class="grid gap-4 lg:grid-cols-4">
-    <section v-for="column in columns" :key="column" class="min-h-80 rounded-lg bg-slate-100 p-3 dark:bg-slate-800">
+    <section
+      v-for="column in columns"
+      :key="column"
+      class="min-h-80 rounded-lg bg-slate-100 p-3 dark:bg-slate-800"
+    >
       <div class="mb-3 flex items-center justify-between gap-3">
         <h2 class="text-sm font-semibold">{{ statusLabels[column] }}</h2>
-        <button class="btn-muted h-8 w-8 p-0" type="button" title="Görev ekle" @click="openCreateModal(column)">
+        <button
+          class="btn-muted h-8 w-8 p-0"
+          type="button"
+          title="Görev ekle"
+          @click="openCreateModal(column)"
+        >
           <Plus class="h-4 w-4" />
         </button>
       </div>
 
-      <div v-if="tasksByStatus[column].length === 0" class="rounded-md border border-dashed border-slate-300 p-4 text-xs text-slate-500 dark:border-slate-700">
+      <div
+        v-if="tasksByStatus[column].length === 0"
+        class="rounded-md border border-dashed border-slate-300 p-4 text-xs text-slate-500 dark:border-slate-700"
+      >
         Bu kolonda görev yok.
       </div>
 
@@ -168,10 +183,20 @@ const deleteTask = async (task: Task) => {
               <p class="mt-2 line-clamp-3 text-xs text-slate-500">{{ task.description }}</p>
             </div>
             <div class="flex shrink-0 gap-1">
-              <button class="btn-muted h-8 w-8 p-0" type="button" title="Düzenle" @click="openEditModal(task)">
+              <button
+                class="btn-muted h-8 w-8 p-0"
+                type="button"
+                title="Düzenle"
+                @click="openEditModal(task)"
+              >
                 <Pencil class="h-3.5 w-3.5" />
               </button>
-              <button class="btn-muted h-8 w-8 p-0" type="button" title="Sil" @click="deleteTask(task)">
+              <button
+                class="btn-muted h-8 w-8 p-0"
+                type="button"
+                title="Sil"
+                @click="deleteTask(task)"
+              >
                 <Trash2 class="h-3.5 w-3.5" />
               </button>
             </div>
@@ -179,7 +204,10 @@ const deleteTask = async (task: Task) => {
 
           <div class="mt-3 flex items-center justify-between gap-2 text-xs">
             <span class="truncate">{{ task.assignedTo }}</span>
-            <span class="shrink-0 rounded-full px-2 py-1 font-medium" :class="priorityClasses[task.priority]">
+            <span
+              class="shrink-0 rounded-full px-2 py-1 font-medium"
+              :class="priorityClasses[task.priority]"
+            >
               {{ priorityLabels[task.priority] }}
             </span>
           </div>
@@ -192,12 +220,20 @@ const deleteTask = async (task: Task) => {
     </section>
   </div>
 
-  <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-    <form class="panel max-h-[90vh] w-full max-w-2xl overflow-y-auto p-5" @submit.prevent="submitTask">
+  <div
+    v-if="isModalOpen"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+  >
+    <form
+      class="panel max-h-[90vh] w-full max-w-2xl overflow-y-auto p-5"
+      @submit.prevent="submitTask"
+    >
       <div class="mb-5 flex items-start justify-between gap-4">
         <div>
           <h2 class="text-lg font-semibold">{{ editingId ? 'Görev düzenle' : 'Görev ekle' }}</h2>
-          <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Kayıtlar Firestore tasks koleksiyonuna yazılır.</p>
+          <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Kayıtlar Firestore tasks koleksiyonuna yazılır.
+          </p>
         </div>
         <button class="btn-muted h-9 w-9 p-0" type="button" @click="closeModal">
           <X class="h-4 w-4" />
@@ -230,13 +266,17 @@ const deleteTask = async (task: Task) => {
         <label class="space-y-1">
           <span class="text-sm font-medium">Öncelik</span>
           <select v-model="form.priority" class="input w-full" required>
-            <option v-for="priority in priorities" :key="priority" :value="priority">{{ priorityLabels[priority] }}</option>
+            <option v-for="priority in priorities" :key="priority" :value="priority">
+              {{ priorityLabels[priority] }}
+            </option>
           </select>
         </label>
         <label class="space-y-1">
           <span class="text-sm font-medium">Durum</span>
           <select v-model="form.status" class="input w-full" required>
-            <option v-for="status in columns" :key="status" :value="status">{{ statusLabels[status] }}</option>
+            <option v-for="status in columns" :key="status" :value="status">
+              {{ statusLabels[status] }}
+            </option>
           </select>
         </label>
         <label class="space-y-1 sm:col-span-2">

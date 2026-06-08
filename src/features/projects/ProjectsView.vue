@@ -37,23 +37,31 @@ const isModalOpen = ref(false)
 const editingId = ref<string | null>(null)
 const saving = ref(false)
 const error = ref('')
+const startDateFilter = ref('')
+const endDateFilter = ref('')
 const form = reactive<ProjectForm>(emptyForm())
 
 const customerName = (customerId: string) =>
-  workspace.customers.find((customer) => customer.id === customerId)?.companyName ?? 'Müşteri bulunamadı'
+  workspace.customers.find((customer) => customer.id === customerId)?.companyName ??
+  'Müşteri bulunamadı'
 
 const filteredProjects = computed(() => {
   const term = search.value.trim().toLowerCase()
 
   return workspace.projects.filter((project) => {
     const matchesStatus = statusFilter.value === 'All' || project.status === statusFilter.value
+
     const matchesSearch =
       !term ||
       [project.projectName, project.description, customerName(project.customerId)]
         .filter(Boolean)
         .some((field) => field.toLowerCase().includes(term))
 
-    return matchesStatus && matchesSearch
+    const matchesStartDate = !startDateFilter.value || project.startDate >= startDateFilter.value
+
+    const matchesEndDate = !endDateFilter.value || project.endDate <= endDateFilter.value
+
+    return matchesStatus && matchesSearch && matchesStartDate && matchesEndDate
   })
 })
 
@@ -140,7 +148,12 @@ const deleteProject = async (project: Project) => {
 
 <template>
   <PageHeader title="Projeler" description="Müşterilere bağlı proje portföyü ve durum takibi.">
-    <button class="btn-primary" type="button" :disabled="workspace.customers.length === 0" @click="openCreateModal">
+    <button
+      class="btn-primary"
+      type="button"
+      :disabled="workspace.customers.length === 0"
+      @click="openCreateModal"
+    >
       <Plus class="h-4 w-4" />
       Proje ekle
     </button>
@@ -149,15 +162,24 @@ const deleteProject = async (project: Project) => {
   <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div class="flex w-full flex-col gap-3 sm:flex-row">
       <label class="relative w-full max-w-md">
-        <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <Search
+          class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+        />
         <input v-model="search" class="input w-full pl-9" placeholder="Proje veya müşteri ara" />
       </label>
       <select v-model="statusFilter" class="input w-full sm:w-44">
         <option value="All">Tüm durumlar</option>
-        <option v-for="status in statuses" :key="status" :value="status">{{ statusLabels[status] }}</option>
+        <option v-for="status in statuses" :key="status" :value="status">
+          {{ statusLabels[status] }}
+        </option>
       </select>
+      <input v-model="startDateFilter" type="date" class="input w-full sm:w-auto" />
+
+      <input v-model="endDateFilter" type="date" class="input w-full sm:w-auto" />
     </div>
-    <p class="shrink-0 text-sm text-slate-500 dark:text-slate-400">{{ filteredProjects.length }} proje</p>
+    <p class="shrink-0 text-sm text-slate-500 dark:text-slate-400">
+      {{ filteredProjects.length }} proje
+    </p>
   </div>
 
   <p
@@ -167,7 +189,9 @@ const deleteProject = async (project: Project) => {
     {{ error || workspace.error }}
   </p>
 
-  <div v-if="workspace.loading" class="panel p-6 text-sm text-slate-500">Projeler yükleniyor...</div>
+  <div v-if="workspace.loading" class="panel p-6 text-sm text-slate-500">
+    Projeler yükleniyor...
+  </div>
   <div v-else-if="workspace.customers.length === 0" class="panel p-6 text-sm text-slate-500">
     Proje ekleyebilmek için önce bir müşteri kaydı oluşturun.
   </div>
@@ -175,18 +199,29 @@ const deleteProject = async (project: Project) => {
     Filtrelere uygun proje bulunamadı.
   </div>
   <div v-else class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-    <article v-for="project in filteredProjects" :key="project.id" class="panel flex min-h-56 flex-col p-5">
+    <article
+      v-for="project in filteredProjects"
+      :key="project.id"
+      class="panel flex min-h-56 flex-col p-5"
+    >
       <div class="flex items-start justify-between gap-3">
         <div>
-          <p class="text-xs font-medium uppercase tracking-wide text-brand">{{ customerName(project.customerId) }}</p>
+          <p class="text-xs font-medium uppercase tracking-wide text-brand">
+            {{ customerName(project.customerId) }}
+          </p>
           <h2 class="mt-1 font-semibold">{{ project.projectName }}</h2>
         </div>
-        <span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-medium" :class="statusClasses[project.status]">
+        <span
+          class="shrink-0 rounded-full px-2.5 py-1 text-xs font-medium"
+          :class="statusClasses[project.status]"
+        >
           {{ statusLabels[project.status] }}
         </span>
       </div>
 
-      <p class="mt-3 line-clamp-3 text-sm text-slate-500 dark:text-slate-400">{{ project.description }}</p>
+      <p class="mt-3 line-clamp-3 text-sm text-slate-500 dark:text-slate-400">
+        {{ project.description }}
+      </p>
 
       <div class="mt-auto flex items-end justify-between gap-3 pt-5">
         <div class="flex items-center gap-2 text-xs text-slate-500">
@@ -194,10 +229,20 @@ const deleteProject = async (project: Project) => {
           <span>{{ project.startDate }} - {{ project.endDate }}</span>
         </div>
         <div class="flex gap-2">
-          <button class="btn-muted h-9 w-9 p-0" type="button" title="Düzenle" @click="openEditModal(project)">
+          <button
+            class="btn-muted h-9 w-9 p-0"
+            type="button"
+            title="Düzenle"
+            @click="openEditModal(project)"
+          >
             <Pencil class="h-4 w-4" />
           </button>
-          <button class="btn-muted h-9 w-9 p-0" type="button" title="Sil" @click="deleteProject(project)">
+          <button
+            class="btn-muted h-9 w-9 p-0"
+            type="button"
+            title="Sil"
+            @click="deleteProject(project)"
+          >
             <Trash2 class="h-4 w-4" />
           </button>
         </div>
@@ -205,12 +250,20 @@ const deleteProject = async (project: Project) => {
     </article>
   </div>
 
-  <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-    <form class="panel max-h-[90vh] w-full max-w-2xl overflow-y-auto p-5" @submit.prevent="submitProject">
+  <div
+    v-if="isModalOpen"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+  >
+    <form
+      class="panel max-h-[90vh] w-full max-w-2xl overflow-y-auto p-5"
+      @submit.prevent="submitProject"
+    >
       <div class="mb-5 flex items-start justify-between gap-4">
         <div>
           <h2 class="text-lg font-semibold">{{ editingId ? 'Proje düzenle' : 'Proje ekle' }}</h2>
-          <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Kayıtlar Firestore projects koleksiyonuna yazılır.</p>
+          <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Kayıtlar Firestore projects koleksiyonuna yazılır.
+          </p>
         </div>
         <button class="btn-muted h-9 w-9 p-0" type="button" @click="closeModal">
           <X class="h-4 w-4" />
@@ -236,7 +289,9 @@ const deleteProject = async (project: Project) => {
         <label class="space-y-1">
           <span class="text-sm font-medium">Durum</span>
           <select v-model="form.status" class="input w-full" required>
-            <option v-for="status in statuses" :key="status" :value="status">{{ statusLabels[status] }}</option>
+            <option v-for="status in statuses" :key="status" :value="status">
+              {{ statusLabels[status] }}
+            </option>
           </select>
         </label>
         <label class="space-y-1 sm:col-span-2">

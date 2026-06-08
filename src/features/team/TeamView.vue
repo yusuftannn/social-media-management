@@ -108,7 +108,8 @@ const submitMember = async () => {
       })
     }
 
-    closeModal()
+    isModalOpen.value = false
+    resetForm()
   } catch {
     error.value = 'Ekip kaydı Firebase üzerine yazılamadı.'
   } finally {

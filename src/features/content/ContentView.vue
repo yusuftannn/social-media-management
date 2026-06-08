@@ -44,13 +44,18 @@ const isModalOpen = ref(false)
 const editingId = ref<string | null>(null)
 const saving = ref(false)
 const error = ref('')
+const publishStartDate = ref('')
+const publishEndDate = ref('')
 const form = reactive<ContentForm>(emptyForm())
 
 const customerName = (customerId: string) =>
-  workspace.customers.find((customer) => customer.id === customerId)?.companyName ?? 'Müşteri bulunamadı'
+  workspace.customers.find((customer) => customer.id === customerId)?.companyName ??
+  'Müşteri bulunamadı'
 
 const sortedContents = computed(() =>
-  [...workspace.contents].sort((first, second) => first.publishDate.localeCompare(second.publishDate)),
+  [...workspace.contents].sort((first, second) =>
+    first.publishDate.localeCompare(second.publishDate),
+  ),
 )
 
 const filteredContents = computed(() => {
@@ -58,14 +63,28 @@ const filteredContents = computed(() => {
 
   return sortedContents.value.filter((content) => {
     const matchesStatus = statusFilter.value === 'All' || content.status === statusFilter.value
-    const matchesPlatform = platformFilter.value === 'All' || content.platform === platformFilter.value
+
+    const matchesPlatform =
+      platformFilter.value === 'All' || content.platform === platformFilter.value
+
     const matchesSearch =
       !term ||
-      [content.title, content.description, content.contentType, content.platform, customerName(content.customerId)]
+      [
+        content.title,
+        content.description,
+        content.contentType,
+        content.platform,
+        customerName(content.customerId),
+      ]
         .filter(Boolean)
         .some((field) => field.toLowerCase().includes(term))
 
-    return matchesStatus && matchesPlatform && matchesSearch
+    const matchesStartDate =
+      !publishStartDate.value || content.publishDate >= publishStartDate.value
+
+    const matchesEndDate = !publishEndDate.value || content.publishDate <= publishEndDate.value
+
+    return matchesStatus && matchesPlatform && matchesSearch && matchesStartDate && matchesEndDate
   })
 })
 
@@ -127,7 +146,8 @@ const submitContent = async () => {
       })
     }
 
-    closeModal()
+    isModalOpen.value = false
+    resetForm()
   } catch {
     error.value = 'İçerik kaydı Firebase üzerine yazılamadı.'
   } finally {
@@ -148,8 +168,16 @@ const deleteContent = async (content: SocialContent) => {
 </script>
 
 <template>
-  <PageHeader title="İçerik Takvimi" description="Platformlara göre planlanan sosyal medya içerikleri.">
-    <button class="btn-primary" type="button" :disabled="workspace.customers.length === 0" @click="openCreateModal">
+  <PageHeader
+    title="İçerik Takvimi"
+    description="Platformlara göre planlanan sosyal medya içerikleri."
+  >
+    <button
+      class="btn-primary"
+      type="button"
+      :disabled="workspace.customers.length === 0"
+      @click="openCreateModal"
+    >
       <Plus class="h-4 w-4" />
       İçerik ekle
     </button>
@@ -158,19 +186,40 @@ const deleteContent = async (content: SocialContent) => {
   <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
     <div class="flex w-full flex-col gap-3 sm:flex-row">
       <label class="relative w-full max-w-md">
-        <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <Search
+          class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+        />
         <input v-model="search" class="input w-full pl-9" placeholder="İçerik veya müşteri ara" />
       </label>
       <select v-model="platformFilter" class="input w-full sm:w-40">
         <option value="All">Tüm platformlar</option>
-        <option v-for="platform in platforms" :key="platform" :value="platform">{{ platform }}</option>
+        <option v-for="platform in platforms" :key="platform" :value="platform">
+          {{ platform }}
+        </option>
       </select>
       <select v-model="statusFilter" class="input w-full sm:w-44">
         <option value="All">Tüm durumlar</option>
-        <option v-for="status in statuses" :key="status" :value="status">{{ statusLabels[status] }}</option>
+        <option v-for="status in statuses" :key="status" :value="status">
+          {{ statusLabels[status] }}
+        </option>
       </select>
+      <input
+        v-model="publishStartDate"
+        type="date"
+        class="input w-full sm:w-auto"
+        title="Başlangıç tarihi"
+      />
+
+      <input
+        v-model="publishEndDate"
+        type="date"
+        class="input w-full sm:w-auto"
+        title="Bitiş tarihi"
+      />
     </div>
-    <p class="shrink-0 text-sm text-slate-500 dark:text-slate-400">{{ filteredContents.length }} içerik</p>
+    <p class="shrink-0 text-sm text-slate-500 dark:text-slate-400">
+      {{ filteredContents.length }} içerik
+    </p>
   </div>
 
   <p
@@ -180,7 +229,9 @@ const deleteContent = async (content: SocialContent) => {
     {{ error || workspace.error }}
   </p>
 
-  <div v-if="workspace.loading" class="panel p-6 text-sm text-slate-500">İçerikler yükleniyor...</div>
+  <div v-if="workspace.loading" class="panel p-6 text-sm text-slate-500">
+    İçerikler yükleniyor...
+  </div>
   <div v-else-if="workspace.customers.length === 0" class="panel p-6 text-sm text-slate-500">
     İçerik ekleyebilmek için önce bir müşteri kaydı oluşturun.
   </div>
@@ -188,23 +239,38 @@ const deleteContent = async (content: SocialContent) => {
     Filtrelere uygun içerik bulunamadı.
   </div>
   <div v-else class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-    <article v-for="content in filteredContents" :key="content.id" class="panel flex min-h-60 flex-col p-5">
+    <article
+      v-for="content in filteredContents"
+      :key="content.id"
+      class="panel flex min-h-60 flex-col p-5"
+    >
       <div class="flex items-start justify-between gap-3">
         <div>
-          <p class="text-xs font-medium uppercase text-brand">{{ customerName(content.customerId) }}</p>
+          <p class="text-xs font-medium uppercase text-brand">
+            {{ customerName(content.customerId) }}
+          </p>
           <h2 class="mt-1 font-semibold">{{ content.title }}</h2>
         </div>
-        <span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-medium" :class="statusClasses[content.status]">
+        <span
+          class="shrink-0 rounded-full px-2.5 py-1 text-xs font-medium"
+          :class="statusClasses[content.status]"
+        >
           {{ statusLabels[content.status] }}
         </span>
       </div>
 
       <div class="mt-3 flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-400">
-        <span class="rounded-md border border-line px-2 py-1 dark:border-slate-800">{{ content.platform }}</span>
-        <span class="rounded-md border border-line px-2 py-1 dark:border-slate-800">{{ content.contentType }}</span>
+        <span class="rounded-md border border-line px-2 py-1 dark:border-slate-800">{{
+          content.platform
+        }}</span>
+        <span class="rounded-md border border-line px-2 py-1 dark:border-slate-800">{{
+          content.contentType
+        }}</span>
       </div>
 
-      <p class="mt-3 line-clamp-3 text-sm text-slate-500 dark:text-slate-400">{{ content.description }}</p>
+      <p class="mt-3 line-clamp-3 text-sm text-slate-500 dark:text-slate-400">
+        {{ content.description }}
+      </p>
 
       <div class="mt-auto flex items-end justify-between gap-3 pt-5">
         <div class="flex items-center gap-2 text-xs text-slate-500">
@@ -212,10 +278,20 @@ const deleteContent = async (content: SocialContent) => {
           <span>{{ content.publishDate }}</span>
         </div>
         <div class="flex gap-2">
-          <button class="btn-muted h-9 w-9 p-0" type="button" title="Düzenle" @click="openEditModal(content)">
+          <button
+            class="btn-muted h-9 w-9 p-0"
+            type="button"
+            title="Düzenle"
+            @click="openEditModal(content)"
+          >
             <Pencil class="h-4 w-4" />
           </button>
-          <button class="btn-muted h-9 w-9 p-0" type="button" title="Sil" @click="deleteContent(content)">
+          <button
+            class="btn-muted h-9 w-9 p-0"
+            type="button"
+            title="Sil"
+            @click="deleteContent(content)"
+          >
             <Trash2 class="h-4 w-4" />
           </button>
         </div>
@@ -223,8 +299,14 @@ const deleteContent = async (content: SocialContent) => {
     </article>
   </div>
 
-  <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-    <form class="panel max-h-[90vh] w-full max-w-2xl overflow-y-auto p-5" @submit.prevent="submitContent">
+  <div
+    v-if="isModalOpen"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+  >
+    <form
+      class="panel max-h-[90vh] w-full max-w-2xl overflow-y-auto p-5"
+      @submit.prevent="submitContent"
+    >
       <div class="mb-5 flex items-start justify-between gap-4">
         <div>
           <h2 class="text-lg font-semibold">{{ editingId ? 'İçerik düzenle' : 'İçerik ekle' }}</h2>
@@ -256,18 +338,27 @@ const deleteContent = async (content: SocialContent) => {
         <label class="space-y-1">
           <span class="text-sm font-medium">Durum</span>
           <select v-model="form.status" class="input w-full" required>
-            <option v-for="status in statuses" :key="status" :value="status">{{ statusLabels[status] }}</option>
+            <option v-for="status in statuses" :key="status" :value="status">
+              {{ statusLabels[status] }}
+            </option>
           </select>
         </label>
         <label class="space-y-1">
           <span class="text-sm font-medium">Platform</span>
           <select v-model="form.platform" class="input w-full" required>
-            <option v-for="platform in platforms" :key="platform" :value="platform">{{ platform }}</option>
+            <option v-for="platform in platforms" :key="platform" :value="platform">
+              {{ platform }}
+            </option>
           </select>
         </label>
         <label class="space-y-1">
           <span class="text-sm font-medium">İçerik tipi</span>
-          <input v-model="form.contentType" class="input w-full" placeholder="Reels, Carousel, Post" required />
+          <input
+            v-model="form.contentType"
+            class="input w-full"
+            placeholder="Reels, Carousel, Post"
+            required
+          />
         </label>
         <label class="space-y-1 sm:col-span-2">
           <span class="text-sm font-medium">Başlık</span>
