@@ -9,7 +9,7 @@ import {
   updateProfile,
   type User,
 } from 'firebase/auth'
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
+import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
 import { auth, db } from '@/firebase/config'
 import type { AppUser, UserRole } from '@/types'
 
@@ -95,9 +95,58 @@ export const useAuthStore = defineStore('auth', () => {
     await sendPasswordResetEmail(auth, email)
   }
 
+  const updateCurrentUserProfile = async (payload: { name: string; avatar?: string }) => {
+    if (!auth.currentUser || !user.value) throw new Error('Authenticated user not found')
+
+    const name = payload.name.trim()
+    const avatar = payload.avatar?.trim()
+
+    await updateProfile(auth.currentUser, {
+      displayName: name,
+      photoURL: avatar || null,
+    })
+
+    try {
+      await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+        name,
+        avatar: avatar || '',
+        updatedAt: serverTimestamp(),
+      })
+    } catch {
+      await setDoc(
+        doc(db, 'users', auth.currentUser.uid),
+        {
+          name,
+          email: user.value.email,
+          role: user.value.role,
+          avatar: avatar || '',
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      )
+    }
+
+    user.value = {
+      ...user.value,
+      name,
+      avatar: avatar || undefined,
+    }
+  }
+
   const logout = async () => {
     await signOut(auth)
   }
 
-  return { user, loading, authReady, isAuthenticated, init, login, register, resetPassword, logout }
+  return {
+    user,
+    loading,
+    authReady,
+    isAuthenticated,
+    init,
+    login,
+    register,
+    resetPassword,
+    updateCurrentUserProfile,
+    logout,
+  }
 })

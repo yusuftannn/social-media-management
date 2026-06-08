@@ -67,3 +67,17 @@ export interface TeamMember {
   avatar?: string
   createdAt?: string
 }
+
+export interface AccountSettings {
+  companyName: string
+  website: string
+  phone: string
+  timezone: string
+  language: 'tr' | 'en'
+  defaultPlatform: ContentPlatform
+  weeklyDigest: boolean
+  approvalNotifications: boolean
+  taskReminders: boolean
+  aiSuggestions: boolean
+  updatedAt?: string
+}
