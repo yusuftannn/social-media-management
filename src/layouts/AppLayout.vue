@@ -100,7 +100,7 @@ const logout = async () => {
         </div>
       </header>
 
-      <main class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6">
+      <main class="mx-auto w-full max-w-8xl px-4 py-6 sm:px-6">
         <RouterView />
       </main>
     </div>

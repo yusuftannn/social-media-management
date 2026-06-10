@@ -3,6 +3,7 @@ import { computed, reactive, ref } from 'vue'
 import { CalendarDays, Pencil, Plus, Search, Trash2, X } from '@lucide/vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
+import { useToast } from '@/composables/useToast'
 import type { ContentPlatform, ContentStatus, SocialContent } from '@/types'
 
 type ContentForm = Omit<SocialContent, 'id' | 'createdAt'>
@@ -37,6 +38,7 @@ const emptyForm = (): ContentForm => ({
 })
 
 const workspace = useWorkspaceStore()
+const toast = useToast()
 const search = ref('')
 const statusFilter = ref<StatusFilter>('All')
 const platformFilter = ref<PlatformFilter>('All')
@@ -139,17 +141,26 @@ const submitContent = async () => {
 
     if (editingId.value) {
       await workspace.updateContent(editingId.value, payload)
+
+      toast.success(`"${payload.title}" içeriği başarıyla güncellendi.`)
     } else {
       await workspace.addContent({
         ...payload,
         createdAt: new Date().toISOString().slice(0, 10),
       })
+
+      toast.success(`"${payload.title}" içeriği başarıyla eklendi.`)
     }
 
     isModalOpen.value = false
     resetForm()
   } catch {
-    error.value = 'İçerik kaydı Firebase üzerine yazılamadı.'
+    const message = editingId.value
+      ? 'İçerik güncellemesi başarısız oldu.'
+      : 'İçerik eklenmesi başarısız oldu.'
+
+    error.value = message
+    toast.error(message)
   } finally {
     saving.value = false
   }
@@ -161,8 +172,13 @@ const deleteContent = async (content: SocialContent) => {
 
   try {
     await workspace.removeContent(content.id)
+
+    toast.success(`"${content.title}" içeriği başarıyla silindi.`)
   } catch {
-    error.value = 'İçerik kaydı silinemedi.'
+    const message = 'İçerik silinmesi başarısız oldu.'
+
+    error.value = message
+    toast.error(message)
   }
 }
 </script>

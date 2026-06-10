@@ -3,6 +3,7 @@ import { computed, reactive, ref } from 'vue'
 import { CalendarDays, Pencil, Plus, Search, Trash2, X } from '@lucide/vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
+import { useToast } from '@/composables/useToast'
 import type { Project, ProjectStatus } from '@/types'
 
 type ProjectForm = Omit<Project, 'id' | 'createdAt'>
@@ -31,6 +32,7 @@ const emptyForm = (): ProjectForm => ({
 })
 
 const workspace = useWorkspaceStore()
+const toast = useToast()
 const search = ref('')
 const statusFilter = ref<StatusFilter>('All')
 const isModalOpen = ref(false)
@@ -99,7 +101,11 @@ const closeModal = () => {
 
 const submitProject = async () => {
   if (form.endDate < form.startDate) {
-    error.value = 'Bitiş tarihi başlangıç tarihinden önce olamaz.'
+    const message = 'Bitiş tarihi başlangıç tarihinden önce olamaz.'
+
+    error.value = message
+    toast.error(message)
+
     return
   }
 
@@ -118,17 +124,26 @@ const submitProject = async () => {
 
     if (editingId.value) {
       await workspace.updateProject(editingId.value, payload)
+
+      toast.success(`"${payload.projectName}" projesi başarıyla güncellendi.`)
     } else {
       await workspace.addProject({
         ...payload,
         createdAt: new Date().toISOString().slice(0, 10),
       })
+
+      toast.success(`"${payload.projectName}" projesi başarıyla eklendi.`)
     }
 
     isModalOpen.value = false
     resetForm()
   } catch {
-    error.value = 'Proje kaydı Firebase üzerine yazılamadı.'
+    const message = editingId.value
+      ? 'Proje güncellemesi başarısız oldu.'
+      : 'Proje eklenmesi başarısız oldu.'
+
+    error.value = message
+    toast.error(message)
   } finally {
     saving.value = false
   }
@@ -140,8 +155,12 @@ const deleteProject = async (project: Project) => {
 
   try {
     await workspace.removeProject(project.id)
+    toast.success(`"${project.projectName}" projesi başarıyla silindi.`)
   } catch {
-    error.value = 'Proje kaydı silinemedi.'
+    const message = 'Proje silinmesi başarısız oldu.'
+
+    error.value = message
+    toast.error(message)
   }
 }
 </script>

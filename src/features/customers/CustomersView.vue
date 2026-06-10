@@ -3,6 +3,7 @@ import { computed, reactive, ref } from 'vue'
 import { Pencil, Plus, Search, Trash2, X } from '@lucide/vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
+import { useToast } from '@/composables/useToast'
 import type { Customer } from '@/types'
 
 type CustomerForm = Omit<Customer, 'id' | 'createdAt'>
@@ -18,6 +19,7 @@ const emptyForm = (): CustomerForm => ({
 })
 
 const workspace = useWorkspaceStore()
+const toast = useToast()
 const search = ref('')
 const isModalOpen = ref(false)
 const editingId = ref<string | null>(null)
@@ -85,17 +87,21 @@ const submitCustomer = async () => {
 
     if (editingId.value) {
       await workspace.updateCustomer(editingId.value, payload)
+      toast.success(`"${payload.companyName}" müşterisi başarıyla güncellendi.`)
     } else {
       await workspace.addCustomer({
         ...payload,
         createdAt: new Date().toISOString().slice(0, 10),
       })
+      toast.success(`"${payload.companyName}" müşterisi başarıyla eklendi.`)
     }
 
     isModalOpen.value = false
     resetForm()
   } catch {
-    error.value = 'Müşteri kaydı Firebase üzerine yazılamadı.'
+    const message = editingId.value ? 'Müşteri güncellemesi başarısız oldu.' : 'Müşteri eklenmesi başarısız oldu.'
+    error.value = message
+    toast.error(message)
   } finally {
     saving.value = false
   }
@@ -107,8 +113,11 @@ const deleteCustomer = async (customer: Customer) => {
 
   try {
     await workspace.removeCustomer(customer.id)
+    toast.success(`"${customer.companyName}" müşterisi başarıyla silindi.`)
   } catch {
-    error.value = 'Müşteri kaydı silinemedi.'
+    const message = 'Müşteri silinmesi başarısız oldu.'
+    error.value = message
+    toast.error(message)
   }
 }
 </script>
