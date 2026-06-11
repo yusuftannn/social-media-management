@@ -3,9 +3,10 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { Bell, Building2, Palette, RotateCcw, Save, Shield, UserRound } from '@lucide/vue'
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
 import PageHeader from '@/components/ui/PageHeader.vue'
-import { auth, db } from '@/firebase/config'
+import { db } from '@/firebase/config'
 import { useAuthStore } from '@/stores/authStore'
 import { useThemeStore } from '@/stores/themeStore'
+import { useToast } from '@/composables/useToast'
 import type { AccountSettings, ContentPlatform } from '@/types'
 
 type ProfileForm = {
@@ -28,10 +29,17 @@ const defaultSettings = (): AccountSettings => ({
 })
 
 const platforms: ContentPlatform[] = ['Instagram', 'Facebook', 'LinkedIn', 'TikTok', 'X']
-const timezones = ['Europe/Istanbul', 'Europe/London', 'Europe/Berlin', 'America/New_York', 'Asia/Dubai']
+const timezones = [
+  'Europe/Istanbul',
+  'Europe/London',
+  'Europe/Berlin',
+  'America/New_York',
+  'Asia/Dubai',
+]
 
 const authStore = useAuthStore()
 const theme = useThemeStore()
+const toast = useToast()
 const loading = ref(true)
 const saving = ref(false)
 const resetting = ref(false)
@@ -76,7 +84,10 @@ const loadSettings = async () => {
 
 const saveSettings = async () => {
   if (!settingsRef.value) {
-    error.value = 'Ayar kaydetmek icin oturum acmaniz gerekiyor.'
+    const message = 'Ayar kaydetmek icin oturum acmaniz gerekiyor.'
+
+    error.value = message
+    toast.error(message)
     return
   }
 
@@ -104,8 +115,12 @@ const saveSettings = async () => {
 
     fillProfile()
     message.value = 'Ayarlar kaydedildi.'
+    toast.success('Ayarlar başarıyla kaydedildi.')
   } catch {
-    error.value = 'Ayarlar kaydedilemedi. Firebase izinlerini ve baglantiyi kontrol edin.'
+    const message = 'Ayarlar kaydedilemedi. Firebase izinlerini ve baglantiyi kontrol edin.'
+
+    error.value = message
+    toast.error(message)
   } finally {
     saving.value = false
   }
@@ -114,8 +129,11 @@ const saveSettings = async () => {
 const resetForm = () => {
   Object.assign(settings, defaultSettings())
   fillProfile()
+
   message.value = 'Form varsayılan ayarlara alindi. Kalici yapmak icin kaydedin.'
   error.value = ''
+
+  toast.success('Form varsayılan ayarlara döndürüldü.')
 }
 
 const sendPasswordReset = async () => {
@@ -128,8 +146,12 @@ const sendPasswordReset = async () => {
   try {
     await authStore.resetPassword(profile.email)
     message.value = 'Parola sıfırlama e-postası gonderildi.'
+    toast.success('Parola sıfırlama e-postası gönderildi.')
   } catch {
-    error.value = 'Parola sıfırlama e-postası gonderilemedi.'
+    const message = 'Parola sıfırlama e-postası gonderilemedi.'
+
+    error.value = message
+    toast.error(message)
   } finally {
     resetting.value = false
   }
@@ -152,22 +174,9 @@ onMounted(() => {
     </button>
   </PageHeader>
 
-  <div class="mb-4 flex flex-col gap-3">
-    <p
-      v-if="message"
-      class="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300"
-    >
-      {{ message }}
-    </p>
-    <p
-      v-if="error"
-      class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
-    >
-      {{ error }}
-    </p>
+  <div v-if="loading" class="panel p-6 text-sm text-slate-500 dark:text-slate-400">
+    Ayarlar yukleniyor...
   </div>
-
-  <div v-if="loading" class="panel p-6 text-sm text-slate-500 dark:text-slate-400">Ayarlar yukleniyor...</div>
 
   <form v-else class="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]" @submit.prevent="saveSettings">
     <section class="panel p-5">
@@ -175,7 +184,9 @@ onMounted(() => {
         <UserRound class="h-5 w-5 text-brand" />
         <div>
           <h2 class="font-semibold">Profil</h2>
-          <p class="text-sm text-slate-500 dark:text-slate-400">Kullanici kimligi ve gorunen bilgiler.</p>
+          <p class="text-sm text-slate-500 dark:text-slate-400">
+            Kullanici kimligi ve gorunen bilgiler.
+          </p>
         </div>
       </div>
 
@@ -186,7 +197,12 @@ onMounted(() => {
         </label>
         <label class="space-y-1">
           <span class="text-sm font-medium">E-posta</span>
-          <input v-model="profile.email" class="input w-full bg-slate-50 dark:bg-slate-900" disabled type="email" />
+          <input
+            v-model="profile.email"
+            class="input w-full bg-slate-50 dark:bg-slate-900"
+            disabled
+            type="email"
+          />
         </label>
         <label class="space-y-1 sm:col-span-2">
           <span class="text-sm font-medium">Avatar URL</span>
@@ -200,7 +216,9 @@ onMounted(() => {
         <Building2 class="h-5 w-5 text-brand" />
         <div>
           <h2 class="font-semibold">Sirket</h2>
-          <p class="text-sm text-slate-500 dark:text-slate-400">Ajans bilgileri ve calisma bolgesi.</p>
+          <p class="text-sm text-slate-500 dark:text-slate-400">
+            Ajans bilgileri ve calisma bolgesi.
+          </p>
         </div>
       </div>
 
@@ -225,7 +243,9 @@ onMounted(() => {
         <Palette class="h-5 w-5 text-brand" />
         <div>
           <h2 class="font-semibold">Calisma Tercihleri</h2>
-          <p class="text-sm text-slate-500 dark:text-slate-400">Varsayılan dil, platform ve tema.</p>
+          <p class="text-sm text-slate-500 dark:text-slate-400">
+            Varsayılan dil, platform ve tema.
+          </p>
         </div>
       </div>
 
@@ -240,16 +260,22 @@ onMounted(() => {
         <label class="space-y-1">
           <span class="text-sm font-medium">Saat dilimi</span>
           <select v-model="settings.timezone" class="input w-full">
-            <option v-for="timezone in timezones" :key="timezone" :value="timezone">{{ timezone }}</option>
+            <option v-for="timezone in timezones" :key="timezone" :value="timezone">
+              {{ timezone }}
+            </option>
           </select>
         </label>
         <label class="space-y-1">
           <span class="text-sm font-medium">Varsayılan platform</span>
           <select v-model="settings.defaultPlatform" class="input w-full">
-            <option v-for="platform in platforms" :key="platform" :value="platform">{{ platform }}</option>
+            <option v-for="platform in platforms" :key="platform" :value="platform">
+              {{ platform }}
+            </option>
           </select>
         </label>
-        <label class="flex min-h-10 items-center justify-between gap-3 rounded-md border border-line px-3 dark:border-slate-700">
+        <label
+          class="flex min-h-10 items-center justify-between gap-3 rounded-md border border-line px-3 dark:border-slate-700"
+        >
           <span class="text-sm font-medium">Dark mode</span>
           <input type="checkbox" :checked="theme.isDark" @change="toggleDark" />
         </label>
@@ -261,24 +287,34 @@ onMounted(() => {
         <Bell class="h-5 w-5 text-brand" />
         <div>
           <h2 class="font-semibold">Bildirimler</h2>
-          <p class="text-sm text-slate-500 dark:text-slate-400">Uygulama ici takip ve hatirlaticilar.</p>
+          <p class="text-sm text-slate-500 dark:text-slate-400">
+            Uygulama ici takip ve hatirlaticilar.
+          </p>
         </div>
       </div>
 
       <div class="grid gap-3">
-        <label class="flex min-h-12 items-center justify-between gap-3 rounded-md border border-line px-3 dark:border-slate-700">
+        <label
+          class="flex min-h-12 items-center justify-between gap-3 rounded-md border border-line px-3 dark:border-slate-700"
+        >
           <span class="text-sm font-medium">Haftalik ozet</span>
           <input v-model="settings.weeklyDigest" type="checkbox" />
         </label>
-        <label class="flex min-h-12 items-center justify-between gap-3 rounded-md border border-line px-3 dark:border-slate-700">
+        <label
+          class="flex min-h-12 items-center justify-between gap-3 rounded-md border border-line px-3 dark:border-slate-700"
+        >
           <span class="text-sm font-medium">Onay bekleyen icerikler</span>
           <input v-model="settings.approvalNotifications" type="checkbox" />
         </label>
-        <label class="flex min-h-12 items-center justify-between gap-3 rounded-md border border-line px-3 dark:border-slate-700">
+        <label
+          class="flex min-h-12 items-center justify-between gap-3 rounded-md border border-line px-3 dark:border-slate-700"
+        >
           <span class="text-sm font-medium">Gorev hatirlaticilari</span>
           <input v-model="settings.taskReminders" type="checkbox" />
         </label>
-        <label class="flex min-h-12 items-center justify-between gap-3 rounded-md border border-line px-3 dark:border-slate-700">
+        <label
+          class="flex min-h-12 items-center justify-between gap-3 rounded-md border border-line px-3 dark:border-slate-700"
+        >
           <span class="text-sm font-medium">AI onerileri</span>
           <input v-model="settings.aiSuggestions" type="checkbox" />
         </label>
@@ -291,7 +327,9 @@ onMounted(() => {
           <Shield class="h-5 w-5 text-brand" />
           <div>
             <h2 class="font-semibold">Guvenlik</h2>
-            <p class="text-sm text-slate-500 dark:text-slate-400">Hesap erisimi ve form islemleri.</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400">
+              Hesap erisimi ve form islemleri.
+            </p>
           </div>
         </div>
         <div class="flex flex-col gap-3 sm:flex-row">

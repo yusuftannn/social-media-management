@@ -3,6 +3,7 @@ import { computed, reactive, ref } from 'vue'
 import { CalendarDays, Pencil, Plus, Trash2, X } from '@lucide/vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
+import { useToast } from '@/composables/useToast'
 import type { Priority, Task, TaskStatus } from '@/types'
 
 type TaskForm = Omit<Task, 'id' | 'createdAt'>
@@ -10,6 +11,7 @@ type TaskForm = Omit<Task, 'id' | 'createdAt'>
 const workspace = useWorkspaceStore()
 const columns: TaskStatus[] = ['To Do', 'In Progress', 'Review', 'Done']
 const priorities: Priority[] = ['Low', 'Medium', 'High']
+const toast = useToast()
 
 const statusLabels: Record<TaskStatus, string> = {
   'To Do': 'Yapılacak',
@@ -104,17 +106,24 @@ const submitTask = async () => {
 
     if (editingId.value) {
       await workspace.updateTask(editingId.value, payload)
+      toast.success(`"${payload.title}" görevi başarıyla güncellendi.`)
     } else {
       await workspace.addTask({
         ...payload,
         createdAt: new Date().toISOString().slice(0, 10),
       })
+      toast.success(`"${payload.title}" görevi başarıyla eklendi.`)
     }
 
     isModalOpen.value = false
     resetForm()
   } catch {
-    error.value = 'Görev kaydı Firebase üzerine yazılamadı.'
+    const message = editingId.value
+      ? 'Görev güncellemesi başarısız oldu.'
+      : 'Görev eklenmesi başarısız oldu.'
+
+    error.value = message
+    toast.error(message)
   } finally {
     saving.value = false
   }
@@ -126,8 +135,12 @@ const deleteTask = async (task: Task) => {
 
   try {
     await workspace.removeTask(task.id)
+    toast.success(`"${task.title}" görevi başarıyla silindi.`)
   } catch {
-    error.value = 'Görev kaydı silinemedi.'
+    const message = 'Görev silinmesi başarısız oldu.'
+
+    error.value = message
+    toast.error(message)
   }
 }
 </script>

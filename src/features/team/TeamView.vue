@@ -3,11 +3,17 @@ import { computed, reactive, ref } from 'vue'
 import { Mail, Pencil, Plus, Search, Trash2, UserRound, X } from '@lucide/vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
+import { useToast } from '@/composables/useToast'
 import type { TeamMember } from '@/types'
 
 type TeamMemberForm = Omit<TeamMember, 'id' | 'createdAt'>
 
-const roles: TeamMember['role'][] = ['Designer', 'Developer', 'Social Media Manager', 'Content Creator']
+const roles: TeamMember['role'][] = [
+  'Designer',
+  'Developer',
+  'Social Media Manager',
+  'Content Creator',
+]
 
 const roleLabels: Record<TeamMember['role'], string> = {
   Designer: 'Tasarımcı',
@@ -19,7 +25,8 @@ const roleLabels: Record<TeamMember['role'], string> = {
 const roleClasses: Record<TeamMember['role'], string> = {
   Designer: 'bg-fuchsia-50 text-fuchsia-700 dark:bg-fuchsia-950 dark:text-fuchsia-300',
   Developer: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300',
-  'Social Media Manager': 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
+  'Social Media Manager':
+    'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
   'Content Creator': 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
 }
 
@@ -31,6 +38,7 @@ const emptyForm = (): TeamMemberForm => ({
 })
 
 const workspace = useWorkspaceStore()
+const toast = useToast()
 const search = ref('')
 const isModalOpen = ref(false)
 const editingId = ref<string | null>(null)
@@ -101,17 +109,25 @@ const submitMember = async () => {
 
     if (editingId.value) {
       await workspace.updateTeamMember(editingId.value, payload)
+      toast.success(`"${payload.name}" ekip üyesi başarıyla güncellendi.`)
     } else {
       await workspace.addTeamMember({
         ...payload,
         createdAt: new Date().toISOString().slice(0, 10),
       })
+
+      toast.success(`"${payload.name}" ekip üyesi başarıyla eklendi.`)
     }
 
     isModalOpen.value = false
     resetForm()
   } catch {
-    error.value = 'Ekip kaydı Firebase üzerine yazılamadı.'
+    const message = editingId.value
+      ? 'Ekip üyesi güncellemesi başarısız oldu.'
+      : 'Ekip üyesi eklenmesi başarısız oldu.'
+
+    error.value = message
+    toast.error(message)
   } finally {
     saving.value = false
   }
@@ -123,8 +139,12 @@ const deleteMember = async (member: TeamMember) => {
 
   try {
     await workspace.removeTeamMember(member.id)
+    toast.success(`"${member.name}" ekip üyesi başarıyla silindi.`)
   } catch {
-    error.value = 'Ekip kaydı silinemedi.'
+    const message = 'Ekip üyesi silinmesi başarısız oldu.'
+
+    error.value = message
+    toast.error(message)
   }
 }
 </script>
@@ -139,7 +159,9 @@ const deleteMember = async (member: TeamMember) => {
 
   <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <label class="relative w-full max-w-md">
-      <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+      <Search
+        class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+      />
       <input v-model="search" class="input w-full pl-9" placeholder="Ekip üyesi ara" />
     </label>
     <p class="text-sm text-slate-500 dark:text-slate-400">{{ filteredTeam.length }} üye</p>
@@ -157,7 +179,11 @@ const deleteMember = async (member: TeamMember) => {
     Kayıtlı ekip üyesi bulunamadı.
   </div>
   <div v-else class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-    <article v-for="member in filteredTeam" :key="member.id" class="panel flex min-h-64 flex-col p-5">
+    <article
+      v-for="member in filteredTeam"
+      :key="member.id"
+      class="panel flex min-h-64 flex-col p-5"
+    >
       <div class="flex items-start justify-between gap-3">
         <div class="flex items-center gap-3">
           <img
@@ -184,28 +210,49 @@ const deleteMember = async (member: TeamMember) => {
       </div>
 
       <div class="mt-5">
-        <span class="rounded-full px-2.5 py-1 text-xs font-medium" :class="roleClasses[member.role]">
+        <span
+          class="rounded-full px-2.5 py-1 text-xs font-medium"
+          :class="roleClasses[member.role]"
+        >
           {{ roleLabels[member.role] }}
         </span>
       </div>
 
       <div class="mt-auto flex justify-end gap-2 pt-6">
-        <button class="btn-muted h-9 w-9 p-0" type="button" title="Düzenle" @click="openEditModal(member)">
+        <button
+          class="btn-muted h-9 w-9 p-0"
+          type="button"
+          title="Düzenle"
+          @click="openEditModal(member)"
+        >
           <Pencil class="h-4 w-4" />
         </button>
-        <button class="btn-muted h-9 w-9 p-0" type="button" title="Sil" @click="deleteMember(member)">
+        <button
+          class="btn-muted h-9 w-9 p-0"
+          type="button"
+          title="Sil"
+          @click="deleteMember(member)"
+        >
           <Trash2 class="h-4 w-4" />
         </button>
       </div>
     </article>
   </div>
 
-  <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-    <form class="panel max-h-[90vh] w-full max-w-xl overflow-y-auto p-5" @submit.prevent="submitMember">
+  <div
+    v-if="isModalOpen"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+  >
+    <form
+      class="panel max-h-[90vh] w-full max-w-xl overflow-y-auto p-5"
+      @submit.prevent="submitMember"
+    >
       <div class="mb-5 flex items-start justify-between gap-4">
         <div>
           <h2 class="text-lg font-semibold">{{ editingId ? 'Üye düzenle' : 'Üye ekle' }}</h2>
-          <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Kayıtlar Firestore team koleksiyonuna yazılır.</p>
+          <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Kayıtlar Firestore team koleksiyonuna yazılır.
+          </p>
         </div>
         <button class="btn-muted h-9 w-9 p-0" type="button" @click="closeModal">
           <X class="h-4 w-4" />
