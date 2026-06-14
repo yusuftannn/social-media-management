@@ -1,12 +1,44 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import { Pencil, Plus, Search, Trash2, X } from '@lucide/vue'
+import { Pencil, Plus, Search, Trash2, X, RotateCcw } from '@lucide/vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { useToast } from '@/composables/useToast'
 import type { Customer } from '@/types'
 
 type CustomerForm = Omit<Customer, 'id' | 'createdAt'>
+type SearchField = 'all' | 'companyName' | 'contactName' | 'email' | 'phone' | 'website' | 'notes'
+type DetailFilter =
+  | 'all'
+  | 'withWebsite'
+  | 'withoutWebsite'
+  | 'withNotes'
+  | 'withoutNotes'
+  | 'withLogo'
+  | 'withoutLogo'
+
+const searchFieldLabels: Record<SearchField, string> = {
+  all: 'Tüm alanlar',
+  companyName: 'Şirket',
+  contactName: 'Yetkili',
+  email: 'E-posta',
+  phone: 'Telefon',
+  website: 'Web',
+  notes: 'Notlar',
+}
+
+const detailFilterLabels: Record<DetailFilter, string> = {
+  all: 'Tüm kayıtlar',
+  withWebsite: 'Web sitesi olan',
+  withoutWebsite: 'Web sitesi olmayan',
+  withNotes: 'Notu olan',
+  withoutNotes: 'Notu olmayan',
+  withLogo: 'Logosu olan',
+  withoutLogo: 'Logosu olmayan',
+}
+
+const searchFields = Object.keys(searchFieldLabels) as SearchField[]
+const detailFilters = Object.keys(detailFilterLabels) as DetailFilter[]
 
 const emptyForm = (): CustomerForm => ({
   companyName: '',
@@ -21,22 +53,70 @@ const emptyForm = (): CustomerForm => ({
 const workspace = useWorkspaceStore()
 const toast = useToast()
 const search = ref('')
+const searchField = ref<SearchField>('all')
+const detailFilter = ref<DetailFilter>('all')
+const createdFromFilter = ref('')
+const createdToFilter = ref('')
 const isModalOpen = ref(false)
 const editingId = ref<string | null>(null)
 const saving = ref(false)
 const error = ref('')
 const form = reactive<CustomerForm>(emptyForm())
 
+const hasActiveFilters = computed(
+  () =>
+    search.value.trim() !== '' ||
+    searchField.value !== 'all' ||
+    detailFilter.value !== 'all' ||
+    createdFromFilter.value !== '' ||
+    createdToFilter.value !== '',
+)
+
+const searchableValues = (customer: Customer) => ({
+  companyName: customer.companyName,
+  contactName: customer.contactName,
+  email: customer.email,
+  phone: customer.phone,
+  website: customer.website,
+  notes: customer.notes ?? '',
+})
+
 const filteredCustomers = computed(() => {
   const term = search.value.trim().toLowerCase()
-  if (!term) return workspace.customers
 
-  return workspace.customers.filter((customer) =>
-    [customer.companyName, customer.contactName, customer.email, customer.phone, customer.website]
-      .filter(Boolean)
-      .some((field) => field.toLowerCase().includes(term)),
-  )
+  return workspace.customers.filter((customer) => {
+    const values = searchableValues(customer)
+    const fieldsToSearch =
+      searchField.value === 'all' ? Object.values(values) : [values[searchField.value]]
+
+    const matchesSearch =
+      !term || fieldsToSearch.filter(Boolean).some((field) => field.toLowerCase().includes(term))
+
+    const matchesDetails =
+      detailFilter.value === 'all' ||
+      (detailFilter.value === 'withWebsite' && Boolean(customer.website)) ||
+      (detailFilter.value === 'withoutWebsite' && !customer.website) ||
+      (detailFilter.value === 'withNotes' && Boolean(customer.notes)) ||
+      (detailFilter.value === 'withoutNotes' && !customer.notes) ||
+      (detailFilter.value === 'withLogo' && Boolean(customer.logo)) ||
+      (detailFilter.value === 'withoutLogo' && !customer.logo)
+
+    const matchesCreatedFrom =
+      !createdFromFilter.value || customer.createdAt >= createdFromFilter.value
+
+    const matchesCreatedTo = !createdToFilter.value || customer.createdAt <= createdToFilter.value
+
+    return matchesSearch && matchesDetails && matchesCreatedFrom && matchesCreatedTo
+  })
 })
+
+const clearFilters = () => {
+  search.value = ''
+  searchField.value = 'all'
+  detailFilter.value = 'all'
+  createdFromFilter.value = ''
+  createdToFilter.value = ''
+}
 
 const resetForm = () => {
   Object.assign(form, emptyForm())
@@ -99,7 +179,9 @@ const submitCustomer = async () => {
     isModalOpen.value = false
     resetForm()
   } catch {
-    const message = editingId.value ? 'Müşteri güncellemesi başarısız oldu.' : 'Müşteri eklenmesi başarısız oldu.'
+    const message = editingId.value
+      ? 'Müşteri güncellemesi başarısız oldu.'
+      : 'Müşteri eklenmesi başarısız oldu.'
     error.value = message
     toast.error(message)
   } finally {
@@ -123,19 +205,60 @@ const deleteCustomer = async (customer: Customer) => {
 </script>
 
 <template>
-  <PageHeader title="Müşteriler" description="Müşteri kayıtları, iletişim bilgileri ve hızlı durum görünümü.">
+  <PageHeader
+    title="Müşteriler"
+    description="Müşteri kayıtları, iletişim bilgileri ve hızlı durum görünümü."
+  >
     <button class="btn-primary" type="button" @click="openCreateModal">
       <Plus class="h-4 w-4" />
       Müşteri ekle
     </button>
   </PageHeader>
 
-  <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-    <label class="relative w-full max-w-md">
-      <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-      <input v-model="search" class="input w-full pl-9" placeholder="Müşteri ara" />
-    </label>
-    <p class="text-sm text-slate-500 dark:text-slate-400">{{ filteredCustomers.length }} kayıt</p>
+  <div class="mb-4 flex flex-col gap-3">
+    <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+      <div
+        class="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_180px_190px_160px_160px]"
+      >
+        <label class="relative">
+          <Search
+            class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+          />
+          <input v-model="search" class="input w-full pl-9" placeholder="Müşteri ara" />
+        </label>
+        <select v-model="searchField" class="input w-full">
+          <option v-for="field in searchFields" :key="field" :value="field">
+            {{ searchFieldLabels[field] }}
+          </option>
+        </select>
+        <select v-model="detailFilter" class="input w-full">
+          <option v-for="filter in detailFilters" :key="filter" :value="filter">
+            {{ detailFilterLabels[filter] }}
+          </option>
+        </select>
+        <input
+          v-model="createdFromFilter"
+          type="date"
+          class="input w-full"
+          title="Başlangıç tarihi"
+        />
+        <input v-model="createdToFilter" type="date" class="input w-full" title="Bitiş tarihi" />
+      </div>
+      <div class="flex shrink-0 items-center justify-between gap-3">
+        <button
+          class="btn-muted h-10 w-10 p-0"
+          type="button"
+          title="Filtreleri temizle"
+          :disabled="!hasActiveFilters"
+          @click="clearFilters"
+        >
+          <RotateCcw class="h-4 w-4" />
+        </button>
+        <p class="text-sm text-slate-500 dark:text-slate-400">
+          {{ filteredCustomers.length }} kayıt
+        </p>
+      </div>
+    </div>
   </div>
 
   <p
@@ -148,7 +271,7 @@ const deleteCustomer = async (customer: Customer) => {
   <div class="panel overflow-hidden">
     <div v-if="workspace.loading" class="p-6 text-sm text-slate-500">Müşteriler yükleniyor...</div>
     <div v-else-if="filteredCustomers.length === 0" class="p-6 text-sm text-slate-500">
-      Kayıtlı müşteri bulunamadı.
+      Filtrelere uygun müşteri bulunamadı.
     </div>
     <div v-else class="overflow-x-auto">
       <table class="w-full min-w-[820px] text-left text-sm">
@@ -181,7 +304,11 @@ const deleteCustomer = async (customer: Customer) => {
               <a
                 v-if="customer.website"
                 class="text-brand hover:underline"
-                :href="customer.website.startsWith('http') ? customer.website : `https://${customer.website}`"
+                :href="
+                  customer.website.startsWith('http')
+                    ? customer.website
+                    : `https://${customer.website}`
+                "
                 target="_blank"
                 rel="noreferrer"
               >
@@ -190,10 +317,20 @@ const deleteCustomer = async (customer: Customer) => {
             </td>
             <td class="p-4">
               <div class="flex justify-end gap-2">
-                <button class="btn-muted h-9 w-9 p-0" type="button" title="Düzenle" @click="openEditModal(customer)">
+                <button
+                  class="btn-muted h-9 w-9 p-0"
+                  type="button"
+                  title="Düzenle"
+                  @click="openEditModal(customer)"
+                >
                   <Pencil class="h-4 w-4" />
                 </button>
-                <button class="btn-muted h-9 w-9 p-0" type="button" title="Sil" @click="deleteCustomer(customer)">
+                <button
+                  class="btn-muted h-9 w-9 p-0"
+                  type="button"
+                  title="Sil"
+                  @click="deleteCustomer(customer)"
+                >
                   <Trash2 class="h-4 w-4" />
                 </button>
               </div>
@@ -204,12 +341,22 @@ const deleteCustomer = async (customer: Customer) => {
     </div>
   </div>
 
-  <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-    <form class="panel max-h-[90vh] w-full max-w-2xl overflow-y-auto p-5" @submit.prevent="submitCustomer">
+  <div
+    v-if="isModalOpen"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+  >
+    <form
+      class="panel max-h-[90vh] w-full max-w-2xl overflow-y-auto p-5"
+      @submit.prevent="submitCustomer"
+    >
       <div class="mb-5 flex items-start justify-between gap-4">
         <div>
-          <h2 class="text-lg font-semibold">{{ editingId ? 'Müşteri düzenle' : 'Müşteri ekle' }}</h2>
-          <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Kayıtlar Firestore customers koleksiyonuna yazılır.</p>
+          <h2 class="text-lg font-semibold">
+            {{ editingId ? 'Müşteri düzenle' : 'Müşteri ekle' }}
+          </h2>
+          <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Müşteri kayıtlarını yönetin.
+          </p>
         </div>
         <button class="btn-muted h-9 w-9 p-0" type="button" @click="closeModal">
           <X class="h-4 w-4" />

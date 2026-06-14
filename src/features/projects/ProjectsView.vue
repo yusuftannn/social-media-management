@@ -281,7 +281,7 @@ const deleteProject = async (project: Project) => {
         <div>
           <h2 class="text-lg font-semibold">{{ editingId ? 'Proje düzenle' : 'Proje ekle' }}</h2>
           <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Kayıtlar Firestore projects koleksiyonuna yazılır.
+            Projelerinizi kolayca yönetin.
           </p>
         </div>
         <button class="btn-muted h-9 w-9 p-0" type="button" @click="closeModal">

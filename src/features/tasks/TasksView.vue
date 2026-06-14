@@ -245,7 +245,7 @@ const deleteTask = async (task: Task) => {
         <div>
           <h2 class="text-lg font-semibold">{{ editingId ? 'Görev düzenle' : 'Görev ekle' }}</h2>
           <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Kayıtlar Firestore tasks koleksiyonuna yazılır.
+            Görevlerinizi kolayca yönetin.
           </p>
         </div>
         <button class="btn-muted h-9 w-9 p-0" type="button" @click="closeModal">
