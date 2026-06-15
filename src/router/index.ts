@@ -29,6 +29,7 @@ const router = createRouter({
         { path: 'customers', name: 'customers', component: () => import('@/features/customers/CustomersView.vue') },
         { path: 'projects', name: 'projects', component: () => import('@/features/projects/ProjectsView.vue') },
         { path: 'content', name: 'content', component: () => import('@/features/content/ContentView.vue') },
+        { path: 'planner', name: 'planner', component: () => import('@/features/planner/PlannerView.vue') },
         { path: 'tasks', name: 'tasks', component: () => import('@/features/tasks/TasksView.vue') },
         { path: 'team', name: 'team', component: () => import('@/features/team/TeamView.vue') },
         { path: 'ai', name: 'ai', component: () => import('@/features/ai/AiAssistantView.vue') },

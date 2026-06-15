@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   Bot,
+  CalendarCheck,
   CalendarDays,
   ChartColumn,
   CheckSquare,
@@ -23,6 +24,7 @@ const nav = [
   { label: 'Müşteriler', to: '/customers', icon: Users },
   { label: 'Projeler', to: '/projects', icon: CheckSquare },
   { label: 'İçerik', to: '/content', icon: CalendarDays },
+  { label: 'Planlayıcı', to: '/planner', icon: CalendarCheck },
   { label: 'Görevler', to: '/tasks', icon: CheckSquare },
   { label: 'Ekip', to: '/team', icon: Users },
   { label: 'AI', to: '/ai', icon: Bot },
