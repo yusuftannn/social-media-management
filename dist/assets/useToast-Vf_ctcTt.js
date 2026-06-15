@@ -1,1 +1,0 @@
-import{A as e}from"./index-8O3zb_tl.js";const a=()=>{const r=e();return{success:(o,s)=>r.success(o,s),error:(o,s)=>r.error(o,s),info:(o,s)=>r.info(o,s),warning:(o,s)=>r.warning(o,s),show:(o,s="info",t)=>r.addToast(o,s,t)}};export{a as u};
