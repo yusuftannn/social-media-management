@@ -7,6 +7,8 @@ import {
   MessageSquare,
   Search,
   Send,
+  Trash2,
+  Edit2,
   X,
 } from '@lucide/vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
@@ -25,6 +27,8 @@ const revisionContent = ref<SocialContent | null>(null)
 const revisionNote = ref('')
 const updatingId = ref<string | null>(null)
 const error = ref('')
+const editingRevision = ref<SocialContent | null>(null)
+const deletingRevisionId = ref<string | null>(null)
 
 const statusLabels: Record<ContentStatus, string> = {
   Draft: 'Taslak',
@@ -42,7 +46,7 @@ const statusClasses: Record<ContentStatus, string> = {
 
 const filters: { label: string; value: ApprovalFilter }[] = [
   { label: 'Onay bekleyen', value: 'Waiting Approval' },
-  { label: 'Tumu', value: 'All' },
+  { label: 'Tümü', value: 'All' },
   { label: 'Taslak', value: 'Draft' },
   { label: 'Onaylandı', value: 'Approved' },
   { label: 'Yayında', value: 'Published' },
@@ -111,6 +115,68 @@ const closeRevisionModal = () => {
 
   revisionContent.value = null
   revisionNote.value = ''
+}
+
+const openEditRevisionModal = (content: SocialContent) => {
+  editingRevision.value = content
+}
+
+const closeEditRevisionModal = () => {
+  if (updatingId.value) return
+
+  editingRevision.value = null
+}
+
+const updateRevisionNote = async () => {
+  if (!editingRevision.value) return
+
+  const note = editingRevision.value.approvalNote?.trim()
+  if (!note) {
+    error.value = 'Revizyon notu bos birakilamaz.'
+    return
+  }
+
+  updatingId.value = editingRevision.value.id
+  error.value = ''
+
+  try {
+    await workspace.updateContent(editingRevision.value.id, {
+      approvalNote: note,
+    })
+
+    toast.success(`"${editingRevision.value.title}" revizyon notu guncellendi.`)
+    closeEditRevisionModal()
+  } catch {
+    const failureMessage = 'Revizyon notu guncellenemedi.'
+
+    error.value = failureMessage
+    toast.error(failureMessage)
+  } finally {
+    updatingId.value = null
+  }
+}
+
+const deleteRevision = async () => {
+  if (!deletingRevisionId.value) return
+
+  updatingId.value = deletingRevisionId.value
+  error.value = ''
+
+  try {
+    const title = workspace.contents.find((c) => c.id === deletingRevisionId.value)?.title
+
+    await workspace.removeContent(deletingRevisionId.value)
+
+    toast.success(`"${title}" revizyondan silindi.`)
+    deletingRevisionId.value = null
+  } catch {
+    const failureMessage = 'Revizyon silinemedi.'
+
+    error.value = failureMessage
+    toast.error(failureMessage)
+  } finally {
+    updatingId.value = null
+  }
 }
 
 const updateStatus = async (
@@ -196,7 +262,7 @@ const requestRevision = async () => {
           <input
             v-model="search"
             class="input w-full pl-9"
-            placeholder="Icerik, musteri veya not ara"
+            placeholder="İçerik, müşteri veya not ara"
           />
         </label>
 
@@ -231,7 +297,7 @@ const requestRevision = async () => {
         Onay akisi yukleniyor...
       </div>
       <div v-else-if="filteredContents.length === 0" class="panel p-6 text-sm text-slate-500">
-        Bu filtreye uygun icerik bulunamadi.
+        Bu filtreye uygun icerik bulunamadı.
       </div>
       <div v-else class="space-y-3">
         <article v-for="content in filteredContents" :key="content.id" class="panel p-5">
@@ -350,10 +416,34 @@ const requestRevision = async () => {
             :key="content.id"
             class="rounded-md border border-line p-3 dark:border-slate-800"
           >
-            <p class="text-sm font-medium">{{ content.title }}</p>
-            <p class="mt-1 line-clamp-2 text-xs text-slate-500 dark:text-slate-400">
-              {{ content.approvalNote }}
-            </p>
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-medium">{{ content.title }}</p>
+                <p class="mt-1 line-clamp-2 text-xs text-slate-500 dark:text-slate-400">
+                  {{ content.approvalNote }}
+                </p>
+              </div>
+              <div class="flex shrink-0 gap-1">
+                <button
+                  class="btn-muted h-7 w-7 p-0"
+                  type="button"
+                  :disabled="updatingId === content.id"
+                  title="Revizyonu düzenle"
+                  @click="openEditRevisionModal(content)"
+                >
+                  <Edit2 class="h-3.5 w-3.5" />
+                </button>
+                <button
+                  class="btn-muted h-7 w-7 p-0 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 dark:hover:text-red-400"
+                  type="button"
+                  :disabled="updatingId === content.id"
+                  title="Revizyonu sil"
+                  @click="deletingRevisionId = content.id"
+                >
+                  <Trash2 class="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
           </li>
         </ul>
       </section>
@@ -394,5 +484,72 @@ const requestRevision = async () => {
         </button>
       </div>
     </form>
+  </div>
+
+  <div
+    v-if="editingRevision"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+  >
+    <form class="panel w-full max-w-xl p-5" @submit.prevent="updateRevisionNote">
+      <div class="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <h2 class="text-lg font-semibold">Revizyonu duzenle</h2>
+          <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            {{ editingRevision.title }} icin revizyonu guncelleyin.
+          </p>
+        </div>
+        <button class="btn-muted h-9 w-9 p-0" type="button" @click="closeEditRevisionModal">
+          <X class="h-4 w-4" />
+        </button>
+      </div>
+
+      <label class="space-y-1">
+        <span class="text-sm font-medium">Revizyon notu</span>
+        <textarea
+          v-model="editingRevision.approvalNote"
+          class="min-h-32 w-full rounded-md border border-line bg-white px-3 py-2 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-900 dark:focus:ring-blue-950"
+          placeholder="Revizyon notunu guncelleyin..."
+          required
+        />
+      </label>
+
+      <div class="mt-5 flex justify-end gap-3">
+        <button class="btn-muted" type="button" @click="closeEditRevisionModal">Vazgec</button>
+        <button class="btn-primary" type="submit" :disabled="updatingId === editingRevision.id">
+          {{ updatingId === editingRevision.id ? 'Kaydediliyor...' : 'Guncelle' }}
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div
+    v-if="deletingRevisionId"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+  >
+    <div class="panel w-full max-w-sm p-5">
+      <h2 class="text-lg font-semibold">Revizyonu sil</h2>
+      <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
+        Bu revizyonu silmek istediginizden emin misiniz? Bu islem geri alinamaz.
+      </p>
+
+      <div class="mt-5 flex justify-end gap-3">
+        <button
+          class="btn-muted"
+          type="button"
+          :disabled="updatingId === deletingRevisionId"
+          @click="deletingRevisionId = null"
+        >
+          Iptal et
+        </button>
+        <button
+          class="btn-primary bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
+          type="button"
+          :disabled="updatingId === deletingRevisionId"
+          @click="deleteRevision"
+        >
+          {{ updatingId === deletingRevisionId ? 'Siliniyor...' : 'Sil' }}
+        </button>
+      </div>
+    </div>
   </div>
 </template>
