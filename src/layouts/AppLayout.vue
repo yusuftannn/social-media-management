@@ -19,6 +19,7 @@ import { RouterLink, RouterView, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
+import WhatsappButton from '@/components/ui/WhatsappButton.vue'
 
 const nav = [
   { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
@@ -108,5 +109,6 @@ const logout = async () => {
         <RouterView />
       </main>
     </div>
+    <WhatsappButton />
   </div>
 </template>
