@@ -6,8 +6,12 @@ import { useWorkspaceStore } from '@/stores/workspaceStore'
 
 const workspace = useWorkspaceStore()
 
-const completedTasks = computed(() => workspace.tasks.filter((task) => task.status === 'Done').length)
-
+const completedTasks = computed(
+  () => workspace.tasks.filter((task) => task.status === 'Done').length,
+)
+const monthFormatter = new Intl.DateTimeFormat('tr-TR', {
+  month: 'short',
+})
 const parseDate = (value?: string) => {
   if (!value) return null
 
@@ -15,7 +19,8 @@ const parseDate = (value?: string) => {
   return Number.isNaN(date.getTime()) ? null : date
 }
 
-const monthKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+const monthKey = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
 
 const recentMonths = computed(() => {
   const today = new Date()
@@ -25,18 +30,29 @@ const recentMonths = computed(() => {
 
     return {
       key: monthKey(date),
-      label: new Intl.DateTimeFormat('tr-TR', { month: 'short' }).format(date),
+      label: monthFormatter.format(date),
     }
   })
 })
 
-const countRecordsByMonth = <T>(items: T[], getDateValue: (item: T) => string | undefined) =>
-  recentMonths.value.map(({ key }) => {
-    return items.filter((item) => {
-      const date = parseDate(getDateValue(item))
-      return date ? monthKey(date) === key : false
-    }).length
+const countRecordsByMonth = <T,>(
+  items: readonly T[],
+  getDateValue: (item: T) => string | undefined,
+) => {
+  const counter = new Map<string, number>()
+
+  items.forEach((item) => {
+    const date = parseDate(getDateValue(item))
+
+    if (!date) return
+
+    const key = monthKey(date)
+
+    counter.set(key, (counter.get(key) ?? 0) + 1)
   })
+
+  return recentMonths.value.map(({ key }) => counter.get(key) ?? 0)
+}
 
 const customerGrowthByMonth = computed(() =>
   countRecordsByMonth(workspace.customers, (customer) => customer.createdAt),
@@ -70,14 +86,23 @@ const chartSeries = computed(() => [
   { name: 'Müşteri', data: customerGrowthByMonth.value },
   { name: 'İçerik', data: contentProductionByMonth.value },
 ])
+
+const activeProjects = computed(() =>
+  workspace.projects.reduce((count, project) => count + Number(project.status === 'Active'), 0),
+)
+
+const pendingTasks = computed(() =>
+  workspace.tasks.reduce((count, task) => count + Number(task.status !== 'Done'), 0),
+)
 </script>
 
 <template>
   <PageHeader title="Dashboard" description="Ajans operasyonlarının güncel özeti." />
   <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
     <StatCard label="Toplam Müşteri" :value="workspace.customers.length" tone="blue" />
-    <StatCard label="Aktif Projeler" :value="workspace.projects.filter((p) => p.status === 'Active').length" tone="green" />
-    <StatCard label="Bekleyen Görevler" :value="workspace.tasks.filter((t) => t.status !== 'Done').length" tone="orange" />
+    <StatCard label="Aktif Projeler" :value="activeProjects" tone="green" />
+
+    <StatCard label="Bekleyen Görevler" :value="pendingTasks" tone="orange" />
     <StatCard label="Bu Ay Tamamlanan İşler" :value="completedTasks" tone="slate" />
   </div>
   <section class="panel mt-6 p-4">

@@ -49,7 +49,7 @@ const emptyForm = (): CustomerForm => ({
   logo: '',
   notes: '',
 })
-
+const today = () => new Date().toISOString().slice(0, 10)
 const workspace = useWorkspaceStore()
 const toast = useToast()
 const search = ref('')
@@ -80,35 +80,57 @@ const searchableValues = (customer: Customer) => ({
   website: customer.website,
   notes: customer.notes ?? '',
 })
+const matchesDetailFilter = (customer: Customer, filter: DetailFilter) => {
+  switch (filter) {
+    case 'withWebsite':
+      return Boolean(customer.website)
 
+    case 'withoutWebsite':
+      return !customer.website
+
+    case 'withNotes':
+      return Boolean(customer.notes)
+
+    case 'withoutNotes':
+      return !customer.notes
+
+    case 'withLogo':
+      return Boolean(customer.logo)
+
+    case 'withoutLogo':
+      return !customer.logo
+
+    default:
+      return true
+  }
+}
 const filteredCustomers = computed(() => {
   const term = search.value.trim().toLowerCase()
 
   return workspace.customers.filter((customer) => {
     const values = searchableValues(customer)
+
     const fieldsToSearch =
       searchField.value === 'all' ? Object.values(values) : [values[searchField.value]]
 
     const matchesSearch =
       !term || fieldsToSearch.filter(Boolean).some((field) => field.toLowerCase().includes(term))
 
-    const matchesDetails =
-      detailFilter.value === 'all' ||
-      (detailFilter.value === 'withWebsite' && Boolean(customer.website)) ||
-      (detailFilter.value === 'withoutWebsite' && !customer.website) ||
-      (detailFilter.value === 'withNotes' && Boolean(customer.notes)) ||
-      (detailFilter.value === 'withoutNotes' && !customer.notes) ||
-      (detailFilter.value === 'withLogo' && Boolean(customer.logo)) ||
-      (detailFilter.value === 'withoutLogo' && !customer.logo)
-
     const matchesCreatedFrom =
       !createdFromFilter.value || customer.createdAt >= createdFromFilter.value
 
     const matchesCreatedTo = !createdToFilter.value || customer.createdAt <= createdToFilter.value
 
-    return matchesSearch && matchesDetails && matchesCreatedFrom && matchesCreatedTo
+    return (
+      matchesSearch &&
+      matchesDetailFilter(customer, detailFilter.value) &&
+      matchesCreatedFrom &&
+      matchesCreatedTo
+    )
   })
 })
+const normalizeWebsite = (website: string) =>
+  website.startsWith('http') ? website : `https://${website}`
 
 const clearFilters = () => {
   search.value = ''
@@ -149,30 +171,30 @@ const closeModal = () => {
   isModalOpen.value = false
   resetForm()
 }
-
+const buildPayload = () => ({
+  companyName: form.companyName.trim(),
+  contactName: form.contactName.trim(),
+  email: form.email.trim(),
+  phone: form.phone.trim(),
+  website: form.website.trim(),
+})
 const submitCustomer = async () => {
   saving.value = true
   error.value = ''
 
   try {
-    const payload = {
-      companyName: form.companyName.trim(),
-      contactName: form.contactName.trim(),
-      email: form.email.trim(),
-      phone: form.phone.trim(),
-      website: form.website.trim(),
-      logo: form.logo?.trim(),
-      notes: form.notes?.trim(),
-    }
+    const payload = buildPayload()
 
     if (editingId.value) {
       await workspace.updateCustomer(editingId.value, payload)
+
       toast.success(`"${payload.companyName}" müşterisi başarıyla güncellendi.`)
     } else {
       await workspace.addCustomer({
         ...payload,
-        createdAt: new Date().toISOString().slice(0, 10),
+        createdAt: today(),
       })
+
       toast.success(`"${payload.companyName}" müşterisi başarıyla eklendi.`)
     }
 
@@ -182,6 +204,7 @@ const submitCustomer = async () => {
     const message = editingId.value
       ? 'Müşteri güncellemesi başarısız oldu.'
       : 'Müşteri eklenmesi başarısız oldu.'
+
     error.value = message
     toast.error(message)
   } finally {
@@ -304,11 +327,7 @@ const deleteCustomer = async (customer: Customer) => {
               <a
                 v-if="customer.website"
                 class="text-brand hover:underline"
-                :href="
-                  customer.website.startsWith('http')
-                    ? customer.website
-                    : `https://${customer.website}`
-                "
+                :href="normalizeWebsite(customer.website)"
                 target="_blank"
                 rel="noreferrer"
               >
