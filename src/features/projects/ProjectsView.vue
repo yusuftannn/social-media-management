@@ -43,9 +43,11 @@ const startDateFilter = ref('')
 const endDateFilter = ref('')
 const form = reactive<ProjectForm>(emptyForm())
 
-const customerName = (customerId: string) =>
-  workspace.customers.find((customer) => customer.id === customerId)?.companyName ??
-  'Müşteri bulunamadı'
+const customerMap = computed(() =>
+  Object.fromEntries(workspace.customers.map((customer) => [customer.id, customer.companyName])),
+)
+
+const customerName = (customerId: string) => customerMap.value[customerId] ?? 'Müşteri bulunamadı'
 
 const filteredProjects = computed(() => {
   const term = search.value.trim().toLowerCase()
@@ -99,29 +101,52 @@ const closeModal = () => {
   resetForm()
 }
 
-const submitProject = async () => {
+const showError = (message: string) => {
+  error.value = message
+  toast.error(message)
+}
+
+const validateProject = () => {
+  if (!form.customerId) {
+    return 'Lütfen bir müşteri seçin.'
+  }
+
+  if (!form.projectName.trim()) {
+    return 'Proje adı boş olamaz.'
+  }
+
+  if (!form.description.trim()) {
+    return 'Proje açıklaması boş olamaz.'
+  }
+
   if (form.endDate < form.startDate) {
-    const message = 'Bitiş tarihi başlangıç tarihinden önce olamaz.'
+    return 'Bitiş tarihi başlangıç tarihinden önce olamaz.'
+  }
 
-    error.value = message
-    toast.error(message)
+  return null
+}
 
+const submitProject = async () => {
+  const validationError = validateProject()
+
+  if (validationError) {
+    showError(validationError)
     return
   }
 
   saving.value = true
   error.value = ''
 
-  try {
-    const payload: ProjectForm = {
-      customerId: form.customerId,
-      projectName: form.projectName.trim(),
-      description: form.description.trim(),
-      status: form.status,
-      startDate: form.startDate,
-      endDate: form.endDate,
-    }
+  const payload: ProjectForm = {
+    customerId: form.customerId,
+    projectName: form.projectName.trim(),
+    description: form.description.trim(),
+    status: form.status,
+    startDate: form.startDate,
+    endDate: form.endDate,
+  }
 
+  try {
     if (editingId.value) {
       await workspace.updateProject(editingId.value, payload)
 
@@ -135,15 +160,13 @@ const submitProject = async () => {
       toast.success(`"${payload.projectName}" projesi başarıyla eklendi.`)
     }
 
-    isModalOpen.value = false
-    resetForm()
+    closeModal()
   } catch {
-    const message = editingId.value
-      ? 'Proje güncellemesi başarısız oldu.'
-      : 'Proje eklenmesi başarısız oldu.'
-
-    error.value = message
-    toast.error(message)
+    showError(
+      editingId.value
+        ? 'Proje güncellemesi başarısız oldu.'
+        : 'Proje eklenmesi başarısız oldu.',
+    )
   } finally {
     saving.value = false
   }
@@ -239,7 +262,7 @@ const deleteProject = async (project: Project) => {
       </div>
 
       <p class="mt-3 line-clamp-3 text-sm text-slate-500 dark:text-slate-400">
-        {{ project.description }}
+        {{ project.description || 'Açıklama bulunmuyor.' }}
       </p>
 
       <div class="mt-auto flex items-end justify-between gap-3 pt-5">
@@ -272,6 +295,7 @@ const deleteProject = async (project: Project) => {
   <div
     v-if="isModalOpen"
     class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+    @click.self="closeModal"
   >
     <form
       class="panel max-h-[90vh] w-full max-w-2xl overflow-y-auto p-5"

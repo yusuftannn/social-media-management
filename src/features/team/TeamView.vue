@@ -30,6 +30,12 @@ const roleClasses: Record<TeamMember['role'], string> = {
   'Content Creator': 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
 }
 
+const buildPayload = (): TeamMemberForm => ({
+  name: form.name.trim(),
+  email: form.email.trim(),
+  role: form.role,
+})
+
 const emptyForm = (): TeamMemberForm => ({
   name: '',
   email: '',
@@ -51,9 +57,9 @@ const filteredTeam = computed(() => {
   if (!term) return workspace.team
 
   return workspace.team.filter((member) =>
-    [member.name, member.email, roleLabels[member.role], member.role]
-      .filter(Boolean)
-      .some((field) => field.toLowerCase().includes(term)),
+    [member.name, member.email, roleLabels[member.role], member.role].some((field) =>
+      field.toLowerCase().includes(term),
+    ),
   )
 })
 
@@ -100,13 +106,18 @@ const submitMember = async () => {
   error.value = ''
 
   try {
-    const payload: TeamMemberForm = {
-      name: form.name.trim(),
-      email: form.email.trim(),
-      role: form.role,
-      avatar: form.avatar?.trim(),
-    }
+    const payload = buildPayload()
+    const exists = workspace.team.some(
+      (member) =>
+        member.email.toLowerCase() === payload.email.toLowerCase() && member.id !== editingId.value,
+    )
 
+    if (exists) {
+      error.value = 'Bu e-posta adresi zaten kullanılıyor.'
+      toast.error(error.value)
+      saving.value = false
+      return
+    }
     if (editingId.value) {
       await workspace.updateTeamMember(editingId.value, payload)
       toast.success(`"${payload.name}" ekip üyesi başarıyla güncellendi.`)
@@ -191,6 +202,7 @@ const deleteMember = async (member: TeamMember) => {
             class="h-12 w-12 rounded-full object-cover"
             :src="member.avatar"
             :alt="member.name"
+            @error="member.avatar = ''"
           />
           <div
             v-else
@@ -223,6 +235,7 @@ const deleteMember = async (member: TeamMember) => {
           class="btn-muted h-9 w-9 p-0"
           type="button"
           title="Düzenle"
+          :disabled="workspace.loading"
           @click="openEditModal(member)"
         >
           <Pencil class="h-4 w-4" />
@@ -231,6 +244,7 @@ const deleteMember = async (member: TeamMember) => {
           class="btn-muted h-9 w-9 p-0"
           type="button"
           title="Sil"
+          :disabled="workspace.loading"
           @click="deleteMember(member)"
         >
           <Trash2 class="h-4 w-4" />
@@ -242,6 +256,7 @@ const deleteMember = async (member: TeamMember) => {
   <div
     v-if="isModalOpen"
     class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+    @click.self="closeModal"
   >
     <form
       class="panel max-h-[90vh] w-full max-w-xl overflow-y-auto p-5"
@@ -254,7 +269,7 @@ const deleteMember = async (member: TeamMember) => {
             Ekip üyelerinizi kolayca yönetin.
           </p>
         </div>
-        <button class="btn-muted h-9 w-9 p-0" type="button" @click="closeModal">
+        <button class="btn-muted" type="button" :disabled="saving" @click="closeModal">
           <X class="h-4 w-4" />
         </button>
       </div>
@@ -269,11 +284,24 @@ const deleteMember = async (member: TeamMember) => {
       <div class="grid gap-4 sm:grid-cols-2">
         <label class="space-y-1">
           <span class="text-sm font-medium">Ad soyad</span>
-          <input v-model="form.name" class="input w-full" required />
+          <input
+            v-model="form.name"
+            class="input w-full"
+            required
+            maxlength="100"
+            autocomplete="name"
+          />
         </label>
         <label class="space-y-1">
           <span class="text-sm font-medium">E-posta</span>
-          <input v-model="form.email" class="input w-full" required type="email" />
+          <input
+            v-model="form.email"
+            class="input w-full"
+            required
+            type="email"
+            maxlength="100"
+            autocomplete="email"
+          />
         </label>
         <label class="space-y-1">
           <span class="text-sm font-medium">Rol</span>
@@ -283,7 +311,12 @@ const deleteMember = async (member: TeamMember) => {
         </label>
         <label class="space-y-1">
           <span class="text-sm font-medium">Avatar URL</span>
-          <input v-model="form.avatar" class="input w-full" placeholder="https://..." />
+          <input
+            v-model="form.avatar"
+            class="input w-full"
+            placeholder="https://..."
+            autocomplete="url"
+          />
         </label>
       </div>
 
