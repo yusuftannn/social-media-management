@@ -19,6 +19,13 @@ import type { ContentStatus, SocialContent } from '@/types'
 
 type ApprovalFilter = 'All' | 'Waiting Approval' | 'Approved' | 'Published' | 'Draft'
 
+const CONTENT_STATUS = {
+  DRAFT: 'Draft',
+  WAITING: 'Waiting Approval',
+  APPROVED: 'Approved',
+  PUBLISHED: 'Published',
+} as const
+
 const workspace = useWorkspaceStore()
 const toast = useToast()
 const search = ref('')
@@ -57,27 +64,27 @@ const customerName = (customerId: string) =>
   'Müşteri bulunamadı'
 
 const waitingApproval = computed(() =>
-  workspace.contents.filter((content) => content.status === 'Waiting Approval'),
+  workspace.contents.filter((content) => content.status === CONTENT_STATUS.WAITING),
 )
 
 const approvedContents = computed(() =>
-  workspace.contents.filter((content) => content.status === 'Approved'),
+  workspace.contents.filter((content) => content.status === CONTENT_STATUS.APPROVED),
 )
 
 const revisionDrafts = computed(() =>
-  workspace.contents.filter((content) => content.status === 'Draft' && content.approvalNote),
+  workspace.contents.filter((content) => content.status === CONTENT_STATUS.DRAFT && content.approvalNote),
 )
 
 const publishedContents = computed(() =>
-  workspace.contents.filter((content) => content.status === 'Published'),
+  workspace.contents.filter((content) => content.status === CONTENT_STATUS.PUBLISHED),
 )
 
 const sortedContents = computed(() => {
   const priority: Record<ContentStatus, number> = {
-    'Waiting Approval': 0,
-    Approved: 1,
-    Draft: 2,
-    Published: 3,
+    [CONTENT_STATUS.WAITING]: 0,
+    [CONTENT_STATUS.APPROVED]: 1,
+    [CONTENT_STATUS.DRAFT]: 2,
+    [CONTENT_STATUS.PUBLISHED]: 3,
   }
 
   return [...workspace.contents].sort((first, second) => {
@@ -206,13 +213,13 @@ const updateStatus = async (
 }
 
 const approveContent = (content: SocialContent) =>
-  updateStatus(content, 'Approved', `"${content.title}" onaylandı.`)
+  updateStatus(content, CONTENT_STATUS.APPROVED, `"${content.title}" onaylandı.`)
 
 const sendToApproval = (content: SocialContent) =>
-  updateStatus(content, 'Waiting Approval', `"${content.title}" onaya gönderildi.`)
+  updateStatus(content, CONTENT_STATUS.WAITING, `"${content.title}" onaya gönderildi.`)
 
 const markPublished = (content: SocialContent) =>
-  updateStatus(content, 'Published', `"${content.title}" yayında olarak işaretlendi.`)
+  updateStatus(content, CONTENT_STATUS.PUBLISHED, `"${content.title}" yayında olarak işaretlendi.`)
 
 const openRevisionModal = (content: SocialContent) => {
   revisionContent.value = content
@@ -230,7 +237,7 @@ const requestRevision = async () => {
 
   await updateStatus(
     revisionContent.value,
-    'Draft',
+    CONTENT_STATUS.DRAFT,
     `"${revisionContent.value.title}" revizyona gonderildi.`,
     note,
   )
@@ -345,7 +352,7 @@ const requestRevision = async () => {
 
             <div class="flex shrink-0 flex-wrap gap-2 lg:max-w-52 lg:justify-end">
               <button
-                v-if="content.status === 'Draft'"
+                v-if="content.status === CONTENT_STATUS.DRAFT"
                 class="btn-muted"
                 type="button"
                 :disabled="updatingId === content.id"
@@ -355,7 +362,7 @@ const requestRevision = async () => {
                 Onaya gonder
               </button>
               <button
-                v-if="content.status === 'Waiting Approval'"
+                v-if="content.status === CONTENT_STATUS.WAITING"
                 class="btn-primary"
                 type="button"
                 :disabled="updatingId === content.id"
@@ -365,7 +372,7 @@ const requestRevision = async () => {
                 Onayla
               </button>
               <button
-                v-if="content.status === 'Waiting Approval'"
+                v-if="content.status === CONTENT_STATUS.WAITING"
                 class="btn-muted"
                 type="button"
                 :disabled="updatingId === content.id"
@@ -375,7 +382,7 @@ const requestRevision = async () => {
                 Revizyon
               </button>
               <button
-                v-if="content.status === 'Approved'"
+                v-if="content.status === CONTENT_STATUS.APPROVED"
                 class="btn-primary"
                 type="button"
                 :disabled="updatingId === content.id"

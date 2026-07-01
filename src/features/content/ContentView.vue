@@ -50,9 +50,11 @@ const publishStartDate = ref('')
 const publishEndDate = ref('')
 const form = reactive<ContentForm>(emptyForm())
 
-const customerName = (customerId: string) =>
-  workspace.customers.find((customer) => customer.id === customerId)?.companyName ??
-  'Müşteri bulunamadı'
+const customerMap = computed(
+  () => new Map(workspace.customers.map((customer) => [customer.id, customer.companyName])),
+)
+const customerName = (customerId: string): string =>
+  customerMap.value.get(customerId) ?? 'Müşteri bulunamadı'
 
 const sortedContents = computed(() =>
   [...workspace.contents].sort((first, second) =>
@@ -64,29 +66,35 @@ const filteredContents = computed(() => {
   const term = search.value.trim().toLowerCase()
 
   return sortedContents.value.filter((content) => {
-    const matchesStatus = statusFilter.value === 'All' || content.status === statusFilter.value
+    if (statusFilter.value !== 'All' && content.status !== statusFilter.value) {
+      return false
+    }
 
-    const matchesPlatform =
-      platformFilter.value === 'All' || content.platform === platformFilter.value
+    if (platformFilter.value !== 'All' && content.platform !== platformFilter.value) {
+      return false
+    }
 
-    const matchesSearch =
-      !term ||
-      [
-        content.title,
-        content.description,
-        content.contentType,
-        content.platform,
-        customerName(content.customerId),
-      ]
-        .filter(Boolean)
-        .some((field) => field.toLowerCase().includes(term))
+    if (publishStartDate.value && content.publishDate < publishStartDate.value) {
+      return false
+    }
 
-    const matchesStartDate =
-      !publishStartDate.value || content.publishDate >= publishStartDate.value
+    if (publishEndDate.value && content.publishDate > publishEndDate.value) {
+      return false
+    }
 
-    const matchesEndDate = !publishEndDate.value || content.publishDate <= publishEndDate.value
+    if (!term) {
+      return true
+    }
 
-    return matchesStatus && matchesPlatform && matchesSearch && matchesStartDate && matchesEndDate
+    return [
+      content.title,
+      content.description,
+      content.contentType,
+      content.platform,
+      customerName(content.customerId),
+    ]
+      .filter(Boolean)
+      .some((field) => field.toLowerCase().includes(term))
   })
 })
 
