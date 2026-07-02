@@ -44,9 +44,45 @@ const formatDay = (date: Date) =>
 const formatWeekday = (date: Date) =>
   new Intl.DateTimeFormat('tr-TR', { weekday: 'short' }).format(date)
 
+const customerMap = computed(() => {
+  return new Map(workspace.customers.map((customer) => [customer.id, customer.companyName]))
+})
+
 const customerName = (customerId: string) =>
-  workspace.customers.find((customer) => customer.id === customerId)?.companyName ??
-  'Müşteri bulunamadı'
+  customerMap.value.get(customerId) ?? 'Müşteri bulunamadı'
+
+const contentStats = computed(() => {
+  const now = new Date()
+  const today = toDateKey(now)
+  const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+
+  const result = {
+    overdue: [] as SocialContent[],
+    waitingApproval: [] as SocialContent[],
+    upcoming: [] as SocialContent[],
+    publishedThisMonth: [] as SocialContent[],
+  }
+
+  for (const content of workspace.contents) {
+    if (content.publishDate >= today) {
+      result.upcoming.push(content)
+    }
+
+    if (content.publishDate < today && content.status !== 'Published') {
+      result.overdue.push(content)
+    }
+
+    if (content.status === 'Waiting Approval') {
+      result.waitingApproval.push(content)
+    }
+
+    if (content.status === 'Published' && content.publishDate.startsWith(month)) {
+      result.publishedThisMonth.push(content)
+    }
+  }
+
+  return result
+})
 
 const sortedContents = computed(() =>
   [...workspace.contents].sort((first, second) =>
@@ -54,32 +90,29 @@ const sortedContents = computed(() =>
   ),
 )
 
-const upcomingContents = computed(() => {
-  const today = toDateKey(new Date())
+const contentsByDate = computed(() => {
+  const map = new Map<string, SocialContent[]>()
 
-  return sortedContents.value.filter((content) => content.publishDate >= today)
+  for (const content of sortedContents.value) {
+    const items = map.get(content.publishDate)
+
+    if (items) {
+      items.push(content)
+    } else {
+      map.set(content.publishDate, [content])
+    }
+  }
+
+  return map
 })
 
-const overdueContents = computed(() => {
-  const today = toDateKey(new Date())
+const upcomingContents = computed(() => contentStats.value.upcoming)
 
-  return workspace.contents.filter(
-    (content) => content.publishDate < today && content.status !== 'Published',
-  )
-})
+const overdueContents = computed(() => contentStats.value.overdue)
 
-const waitingApproval = computed(() =>
-  workspace.contents.filter((content) => content.status === 'Waiting Approval'),
-)
+const waitingApproval = computed(() => contentStats.value.waitingApproval)
 
-const publishedThisMonth = computed(() => {
-  const today = new Date()
-  const month = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
-
-  return workspace.contents.filter(
-    (content) => content.status === 'Published' && content.publishDate.startsWith(month),
-  )
-})
+const publishedThisMonth = computed(() => contentStats.value.publishedThisMonth)
 
 const plannerDays = computed(() => {
   const dayCount = viewMode.value === 'week' ? 7 : 30
@@ -95,24 +128,33 @@ const plannerDays = computed(() => {
       key,
       day: formatDay(date),
       weekday: formatWeekday(date),
-      items: sortedContents.value.filter((content) => content.publishDate === key),
+      items: contentsByDate.value.get(key) ?? [],
     }
   })
 })
 
 const platformBreakdown = computed(() => {
   const platforms: ContentPlatform[] = ['Instagram', 'Facebook', 'LinkedIn', 'TikTok', 'X']
+
   const total = workspace.contents.length || 1
 
-  return platforms.map((platform) => {
-    const count = workspace.contents.filter((content) => content.platform === platform).length
+  const counts: Record<ContentPlatform, number> = {
+    Instagram: 0,
+    Facebook: 0,
+    LinkedIn: 0,
+    TikTok: 0,
+    X: 0,
+  }
 
-    return {
-      platform,
-      count,
-      percent: Math.round((count / total) * 100),
-    }
-  })
+  for (const content of workspace.contents) {
+    counts[content.platform]++
+  }
+
+  return platforms.map((platform) => ({
+    platform,
+    count: counts[platform],
+    percent: Math.round((counts[platform] / total) * 100),
+  }))
 })
 
 const bestNextAction = computed(() => {

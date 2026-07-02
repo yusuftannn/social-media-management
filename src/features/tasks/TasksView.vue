@@ -20,16 +20,25 @@ const statusLabels: Record<TaskStatus, string> = {
   Done: 'Tamamlandı',
 }
 
-const priorityLabels: Record<Priority, string> = {
-  Low: 'Düşük',
-  Medium: 'Orta',
-  High: 'Yüksek',
-}
-
-const priorityClasses: Record<Priority, string> = {
-  Low: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
-  Medium: 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
-  High: 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300',
+const PRIORITY_CONFIG: Record<
+  Priority,
+  {
+    label: string
+    class: string
+  }
+> = {
+  Low: {
+    label: 'Düşük',
+    class: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+  },
+  Medium: {
+    label: 'Orta',
+    class: 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+  },
+  High: {
+    label: 'Yüksek',
+    class: 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300',
+  },
 }
 
 const emptyForm = (): TaskForm => ({
@@ -46,16 +55,22 @@ const editingId = ref<string | null>(null)
 const saving = ref(false)
 const error = ref('')
 const form = reactive<TaskForm>(emptyForm())
+const isEditing = computed(() => editingId.value !== null)
 
-const tasksByStatus = computed(() =>
-  columns.reduce(
-    (groups, column) => ({
-      ...groups,
-      [column]: workspace.tasks.filter((task) => task.status === column),
-    }),
-    {} as Record<TaskStatus, Task[]>,
-  ),
-)
+const tasksByStatus = computed<Record<TaskStatus, Task[]>>(() => {
+  const groups: Record<TaskStatus, Task[]> = {
+    'To Do': [],
+    'In Progress': [],
+    Review: [],
+    Done: [],
+  }
+
+  for (const task of workspace.tasks) {
+    groups[task.status].push(task)
+  }
+
+  return groups
+})
 
 const resetForm = () => {
   Object.assign(form, emptyForm())
@@ -104,7 +119,7 @@ const submitTask = async () => {
       status: form.status,
     }
 
-    if (editingId.value) {
+    if (isEditing.value && editingId.value) {
       await workspace.updateTask(editingId.value, payload)
       toast.success(`"${payload.title}" görevi başarıyla güncellendi.`)
     } else {
@@ -118,7 +133,7 @@ const submitTask = async () => {
     isModalOpen.value = false
     resetForm()
   } catch {
-    const message = editingId.value
+    const message = isEditing.value
       ? 'Görev güncellemesi başarısız oldu.'
       : 'Görev eklenmesi başarısız oldu.'
 
@@ -219,9 +234,9 @@ const deleteTask = async (task: Task) => {
             <span class="truncate">{{ task.assignedTo }}</span>
             <span
               class="shrink-0 rounded-full px-2 py-1 font-medium"
-              :class="priorityClasses[task.priority]"
+              :class="PRIORITY_CONFIG[task.priority].class"
             >
-              {{ priorityLabels[task.priority] }}
+              {{ PRIORITY_CONFIG[task.priority].label }}
             </span>
           </div>
           <div class="mt-3 flex items-center gap-1.5 text-xs text-slate-500">
@@ -243,7 +258,9 @@ const deleteTask = async (task: Task) => {
     >
       <div class="mb-5 flex items-start justify-between gap-4">
         <div>
-          <h2 class="text-lg font-semibold">{{ editingId ? 'Görev düzenle' : 'Görev ekle' }}</h2>
+          <h2 class="text-lg font-semibold">
+            {{ isEditing ? 'Görev düzenle' : 'Görev ekle' }}
+          </h2>
           <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Görevlerinizi kolayca yönetin.
           </p>
@@ -280,7 +297,7 @@ const deleteTask = async (task: Task) => {
           <span class="text-sm font-medium">Öncelik</span>
           <select v-model="form.priority" class="input w-full" required>
             <option v-for="priority in priorities" :key="priority" :value="priority">
-              {{ priorityLabels[priority] }}
+              {{ PRIORITY_CONFIG[priority].label }}
             </option>
           </select>
         </label>
@@ -305,7 +322,15 @@ const deleteTask = async (task: Task) => {
       <div class="mt-5 flex justify-end gap-3">
         <button class="btn-muted" type="button" @click="closeModal">Vazgeç</button>
         <button class="btn-primary" type="submit" :disabled="saving">
-          {{ saving ? 'Kaydediliyor...' : 'Kaydet' }}
+          {{
+            saving
+              ? isEditing
+                ? 'Güncelleniyor...'
+                : 'Kaydediliyor...'
+              : isEditing
+                ? 'Güncelle'
+                : 'Kaydet'
+          }}
         </button>
       </div>
     </form>
