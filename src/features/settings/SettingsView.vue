@@ -65,15 +65,25 @@ const fillProfile = () => {
   profile.avatar = authStore.user?.avatar ?? ''
 }
 
+const clearMessages = () => {
+  message.value = ''
+  error.value = ''
+}
+
 const loadSettings = async () => {
   loading.value = true
   error.value = ''
   fillProfile()
 
   try {
-    if (!settingsRef.value) return
+    const ref = settingsRef.value
 
-    const snapshot = await getDoc(settingsRef.value)
+    if (!ref) {
+      loading.value = false
+      return
+    }
+
+    const snapshot = await getDoc(ref)
     Object.assign(settings, defaultSettings(), snapshot.exists() ? snapshot.data() : {})
   } catch {
     error.value = 'Ayarlar Firebase uzerinden yuklenemedi.'
@@ -92,8 +102,7 @@ const saveSettings = async () => {
   }
 
   saving.value = true
-  message.value = ''
-  error.value = ''
+  clearMessages()
 
   try {
     await authStore.updateCurrentUserProfile({
@@ -104,10 +113,7 @@ const saveSettings = async () => {
     await setDoc(
       settingsRef.value,
       {
-        ...settings,
-        companyName: settings.companyName.trim(),
-        website: settings.website.trim(),
-        phone: settings.phone.trim(),
+        ...sanitizeSettings(),
         updatedAt: serverTimestamp(),
       },
       { merge: true },
@@ -126,6 +132,13 @@ const saveSettings = async () => {
   }
 }
 
+const sanitizeSettings = () => ({
+  ...settings,
+  companyName: settings.companyName.trim(),
+  website: settings.website.trim(),
+  phone: settings.phone.trim(),
+})
+
 const resetForm = () => {
   Object.assign(settings, defaultSettings())
   fillProfile()
@@ -140,8 +153,7 @@ const sendPasswordReset = async () => {
   if (!profile.email) return
 
   resetting.value = true
-  message.value = ''
-  error.value = ''
+  clearMessages()
 
   try {
     await authStore.resetPassword(profile.email)
