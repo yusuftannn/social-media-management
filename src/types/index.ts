@@ -36,6 +36,16 @@ export interface Project {
   createdAt: string
 }
 
+export interface ContentTemplate {
+  id: string
+  name: string
+  platform: ContentPlatform
+  contentType: string
+  title: string
+  description: string
+  status: ContentStatus
+}
+
 export interface SocialContent {
   id: string
   customerId: string
