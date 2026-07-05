@@ -1,9 +1,21 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import { CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus, Search, Trash2, X } from '@lucide/vue'
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Pencil,
+  Plus,
+  Search,
+  Sparkles,
+  Trash2,
+  X,
+} from '@lucide/vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { useToast } from '@/composables/useToast'
+import { aiService } from '@/services/aiService'
 import type { ContentPlatform, ContentStatus, ContentTemplate, SocialContent } from '@/types'
 
 type ContentForm = Omit<SocialContent, 'id' | 'createdAt'>
@@ -77,10 +89,12 @@ const platformFilter = ref<PlatformFilter>('All')
 const isModalOpen = ref(false)
 const editingId = ref<string | null>(null)
 const saving = ref(false)
+const aiGenerating = ref(false)
 const error = ref('')
 const publishStartDate = ref('')
 const publishEndDate = ref('')
 const previewMonth = ref(new Date())
+const aiSuggestion = ref<{ title: string; description: string; hashtags: string[] } | null>(null)
 const form = reactive<ContentForm>(emptyForm())
 
 const customerMap = computed(
@@ -194,6 +208,7 @@ const filteredContents = computed(() => {
 const resetForm = () => {
   Object.assign(form, emptyForm())
   editingId.value = null
+  aiSuggestion.value = null
   error.value = ''
 }
 
@@ -215,8 +230,53 @@ const openEditModal = (content: SocialContent) => {
     status: content.status,
   })
   editingId.value = content.id
+  aiSuggestion.value = null
   error.value = ''
   isModalOpen.value = true
+}
+
+const openDuplicateModal = (content: SocialContent) => {
+  Object.assign(form, {
+    customerId: content.customerId,
+    platform: content.platform,
+    contentType: content.contentType,
+    title: `${content.title} (Kopya)`,
+    description: content.description,
+    publishDate: content.publishDate,
+    status: content.status === 'Published' ? 'Draft' : content.status,
+  })
+  editingId.value = null
+  aiSuggestion.value = null
+  error.value = ''
+  isModalOpen.value = true
+}
+
+const generateAiSuggestion = async () => {
+  if (aiGenerating.value) return
+
+  const prompt = form.title.trim() || form.description.trim() || `${form.platform} içerik`
+  aiGenerating.value = true
+
+  try {
+    aiSuggestion.value = await aiService.generateContentSuggestions(
+      prompt,
+      form.platform,
+      form.contentType || 'Post',
+    )
+    toast.success('AI önerisi hazırlandı.')
+  } catch {
+    toast.error('AI önerisi oluşturulamadı.')
+  } finally {
+    aiGenerating.value = false
+  }
+}
+
+const applyAiSuggestion = () => {
+  if (!aiSuggestion.value) return
+
+  form.title = aiSuggestion.value.title
+  form.description = aiSuggestion.value.description
+  toast.success('AI önerisi form alanlarına eklendi.')
 }
 
 const closeModal = () => {
@@ -477,6 +537,14 @@ const deleteContent = async (content: SocialContent) => {
           <button
             class="btn-muted h-9 w-9 p-0"
             type="button"
+            title="Kopyala"
+            @click="openDuplicateModal(content)"
+          >
+            <Copy class="h-4 w-4" />
+          </button>
+          <button
+            class="btn-muted h-9 w-9 p-0"
+            type="button"
             title="Düzenle"
             @click="openEditModal(content)"
           >
@@ -541,6 +609,41 @@ const deleteContent = async (content: SocialContent) => {
           >
             {{ template.name }}
           </button>
+        </div>
+      </div>
+
+      <div class="mb-5 rounded-lg border border-dashed border-brand/30 bg-brand/5 p-4 dark:border-brand/40 dark:bg-brand/10">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p class="text-sm font-semibold">AI destekli içerik önerisi</p>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Başlık, açıklama ve hashtag önerisi alın; ihtiyacınıza göre formu doldurun.
+            </p>
+          </div>
+          <button class="btn-muted flex items-center gap-2" type="button" :disabled="aiGenerating" @click="generateAiSuggestion">
+            <Sparkles class="h-4 w-4" />
+            {{ aiGenerating ? 'Üretiliyor...' : 'AI önerisi al' }}
+          </button>
+        </div>
+
+        <div v-if="aiSuggestion" class="mt-4 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="text-sm font-semibold">Önerilen başlık</p>
+              <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">{{ aiSuggestion.title }}</p>
+            </div>
+            <button class="btn-muted" type="button" @click="applyAiSuggestion">Kullan</button>
+          </div>
+          <p class="mt-3 text-sm text-slate-600 dark:text-slate-300">{{ aiSuggestion.description }}</p>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <span
+              v-for="tag in aiSuggestion.hashtags"
+              :key="tag"
+              class="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+            >
+              {{ tag }}
+            </span>
+          </div>
         </div>
       </div>
 
