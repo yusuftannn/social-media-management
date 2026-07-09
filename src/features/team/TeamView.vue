@@ -72,6 +72,18 @@ const initials = (name: string) =>
     .join('')
     .toUpperCase()
 
+const validateMember = () => {
+  if (!form.name.trim()) {
+    return 'İsim alanı boş olamaz.'
+  }
+
+  if (!form.email.trim()) {
+    return 'E-posta alanı boş olamaz.'
+  }
+
+  return null
+}
+
 const resetForm = () => {
   Object.assign(form, emptyForm())
   editingId.value = null
@@ -102,6 +114,14 @@ const closeModal = () => {
 }
 
 const submitMember = async () => {
+  const validationError = validateMember()
+
+  if (validationError) {
+    error.value = validationError
+    toast.error(validationError)
+    return
+  }
+
   saving.value = true
   error.value = ''
 

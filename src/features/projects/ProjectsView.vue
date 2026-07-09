@@ -49,6 +49,14 @@ const customerMap = computed(() =>
 
 const customerName = (customerId: string) => customerMap.value[customerId] ?? 'Müşteri bulunamadı'
 
+const hasActiveFilters = computed(
+  () =>
+    Boolean(search.value.trim()) ||
+    statusFilter.value !== 'All' ||
+    startDateFilter.value !== '' ||
+    endDateFilter.value !== '',
+)
+
 const filteredProjects = computed(() => {
   const term = search.value.trim().toLowerCase()
 
@@ -223,9 +231,19 @@ const deleteProject = async (project: Project) => {
 
       <input v-model="endDateFilter" type="date" class="input w-full sm:w-auto" />
     </div>
-    <p class="shrink-0 text-sm text-slate-500 dark:text-slate-400">
-      {{ filteredProjects.length }} proje
-    </p>
+    <div class="flex items-center gap-2">
+      <p class="shrink-0 text-sm text-slate-500 dark:text-slate-400">
+        {{ filteredProjects.length }} proje
+      </p>
+      <button
+        v-if="hasActiveFilters"
+        class="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+        type="button"
+        @click="() => { search = ''; statusFilter = 'All'; startDateFilter = ''; endDateFilter = '' }"
+      >
+        Filtreleri temizle
+      </button>
+    </div>
   </div>
 
   <p

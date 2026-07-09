@@ -297,7 +297,35 @@ const applyTemplate = (template: ContentTemplate) => {
   }
 }
 
+const validateContent = () => {
+  if (!form.customerId) {
+    return 'Lütfen bir müşteri seçin.'
+  }
+
+  if (!form.title.trim()) {
+    return 'İçerik başlığı boş olamaz.'
+  }
+
+  if (!form.description.trim()) {
+    return 'İçerik açıklaması boş olamaz.'
+  }
+
+  if (!form.publishDate) {
+    return 'Yayın tarihi zorunludur.'
+  }
+
+  return null
+}
+
 const submitContent = async () => {
+  const validationError = validateContent()
+
+  if (validationError) {
+    error.value = validationError
+    toast.error(validationError)
+    return
+  }
+
   saving.value = true
   error.value = ''
 

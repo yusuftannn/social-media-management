@@ -139,7 +139,9 @@ const updateRevisionNote = async () => {
 
   const note = editingRevision.value.approvalNote?.trim()
   if (!note) {
-    error.value = 'Revizyon notu bos birakilamaz.'
+    const failureMessage = 'Revizyon notu boş bırakılamaz.'
+    error.value = failureMessage
+    toast.error(failureMessage)
     return
   }
 
@@ -231,7 +233,9 @@ const requestRevision = async () => {
 
   const note = revisionNote.value.trim()
   if (!note) {
-    error.value = 'Revizyon istemek icin kisa bir not ekleyin.'
+    const failureMessage = 'Revizyon istemek için kısa bir not ekleyin.'
+    error.value = failureMessage
+    toast.error(failureMessage)
     return
   }
 
