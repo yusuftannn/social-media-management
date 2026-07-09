@@ -22,6 +22,19 @@ export interface CrudRepository<T extends { id: string }> {
   remove(id: string): Promise<void>
 }
 
+const withId = <T extends { id: string }>(id: string, data: Record<string, unknown>): T => ({
+  id,
+  ...data,
+}) as T
+
+const withCreatedAt = <T extends Record<string, unknown>>(payload: T): T => {
+  if ('createdAt' in payload && typeof payload.createdAt === 'string' && payload.createdAt) {
+    return payload
+  }
+
+  return { ...payload, createdAt: new Date().toISOString() } as T
+}
+
 export const createMemoryRepository = <T extends { id: string }>(
   prefix: string,
   seed: T[],
@@ -36,7 +49,7 @@ export const createMemoryRepository = <T extends { id: string }>(
       return items.find((item) => item.id === id)
     },
     async create(payload) {
-      const item = { ...payload, id: createId(prefix) } as T
+      const item = withCreatedAt({ ...payload, id: createId(prefix) } as Record<string, unknown>) as T
       items = [item, ...items]
       return item
     },
@@ -59,8 +72,6 @@ export const createFirestoreRepository = <T extends { id: string }>(
 ): CrudRepository<T> => {
   const collectionRef = collection(db, collectionName)
 
-  const withId = (id: string, data: Record<string, unknown>) => ({ id, ...data }) as T
-
   return {
     async list() {
       const snapshot = await getDocs(query(collectionRef, orderBy('createdAt', 'desc')))
@@ -72,8 +83,9 @@ export const createFirestoreRepository = <T extends { id: string }>(
       return withId(snapshot.id, snapshot.data())
     },
     async create(payload) {
-      const snapshot = await addDoc(collectionRef, payload)
-      return withId(snapshot.id, payload)
+      const record = withCreatedAt(payload as Record<string, unknown>)
+      const snapshot = await addDoc(collectionRef, record)
+      return withId<T>(snapshot.id, record)
     },
     async update(id, payload) {
       const docRef = doc(db, collectionName, id)

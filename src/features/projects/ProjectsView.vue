@@ -119,6 +119,10 @@ const validateProject = () => {
     return 'Proje açıklaması boş olamaz.'
   }
 
+  if (!form.startDate || !form.endDate) {
+    return 'Başlangıç ve bitiş tarihleri zorunludur.'
+  }
+
   if (form.endDate < form.startDate) {
     return 'Bitiş tarihi başlangıç tarihinden önce olamaz.'
   }

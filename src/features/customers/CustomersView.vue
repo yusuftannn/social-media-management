@@ -129,8 +129,6 @@ const filteredCustomers = computed(() => {
     )
   })
 })
-const normalizeWebsite = (website: string) =>
-  website.startsWith('http') ? website : `https://${website}`
 
 const clearFilters = () => {
   search.value = ''
@@ -171,14 +169,50 @@ const closeModal = () => {
   isModalOpen.value = false
   resetForm()
 }
-const buildPayload = () => ({
+const normalizeWebsite = (website: string) => {
+  const trimmed = website.trim()
+  if (!trimmed) return ''
+  return trimmed.startsWith('http') ? trimmed : `https://${trimmed}`
+}
+
+const validateCustomer = () => {
+  if (!form.companyName.trim()) {
+    return 'Şirket adı boş olamaz.'
+  }
+
+  if (!form.contactName.trim()) {
+    return 'Yetkili adı boş olamaz.'
+  }
+
+  if (!form.email.trim()) {
+    return 'E-posta boş olamaz.'
+  }
+
+  if (!form.phone.trim()) {
+    return 'Telefon boş olamaz.'
+  }
+
+  return null
+}
+
+const buildPayload = (): CustomerForm => ({
   companyName: form.companyName.trim(),
   contactName: form.contactName.trim(),
   email: form.email.trim(),
   phone: form.phone.trim(),
-  website: form.website.trim(),
+  website: normalizeWebsite(form.website),
+  logo: form.logo?.trim() ?? '',
+  notes: form.notes?.trim() ?? '',
 })
 const submitCustomer = async () => {
+  const validationError = validateCustomer()
+
+  if (validationError) {
+    error.value = validationError
+    toast.error(validationError)
+    return
+  }
+
   saving.value = true
   error.value = ''
 

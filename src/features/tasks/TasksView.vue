@@ -105,7 +105,31 @@ const closeModal = () => {
   resetForm()
 }
 
+const validateTask = () => {
+  if (!form.title.trim()) {
+    return 'Görev başlığı boş olamaz.'
+  }
+
+  if (!form.assignedTo.trim()) {
+    return 'Atanan kişi seçilmelidir.'
+  }
+
+  if (!form.dueDate) {
+    return 'Bitiş tarihi zorunludur.'
+  }
+
+  return null
+}
+
 const submitTask = async () => {
+  const validationError = validateTask()
+
+  if (validationError) {
+    error.value = validationError
+    toast.error(validationError)
+    return
+  }
+
   saving.value = true
   error.value = ''
 
