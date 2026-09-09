@@ -3,6 +3,17 @@
 
 Bu proje depo, sosyal medya içerik planlama, görev yönetimi, proje takibi, müşteri yönetimi ve temel raporlama ihtiyaçlarına yönelik bir yönetim paneli sağlar. Ayrıca AI destekli içerik öneri/düzenleme bileşeni içerir (`src/features/ai`).
 
+## Uygulama Ekranları
+<br>
+
+<p align="center">
+  <img
+    src="/screenshots/social-media-management-img.png"
+    alt="MesaiTak Web Uygulama Ekranları"
+    width="100%"
+  />
+</p>
+
 ## Özellikler
 
 - Kullanıcı kimlik doğrulama (Firebase Auth entegrasyonu için hazır)
