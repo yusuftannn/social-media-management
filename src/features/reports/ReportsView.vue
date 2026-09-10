@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { FileSpreadsheet, FileText } from '@lucide/vue'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
+import * as XLSX from 'xlsx'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 
@@ -72,14 +76,10 @@ const metrics = computed(() => {
   ).length
 
   const totalTasks = workspace.tasks.length
-  const completedTasks = workspace.tasks.filter(
-    (task) => task.status === 'Done',
-  ).length
+  const completedTasks = workspace.tasks.filter((task) => task.status === 'Done').length
   const openTasks = totalTasks - completedTasks
 
-  const activeProjects = workspace.projects.filter(
-    (project) => project.status === 'Active',
-  ).length
+  const activeProjects = workspace.projects.filter((project) => project.status === 'Active').length
   const completedProjects = workspace.projects.filter(
     (project) => project.status === 'Completed',
   ).length
@@ -95,15 +95,10 @@ const metrics = computed(() => {
     activeProjects,
     completedProjects,
 
-    taskCompletionRate:
-      totalTasks === 0
-        ? 0
-        : Math.round((completedTasks / totalTasks) * 100),
+    taskCompletionRate: totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100),
 
     contentPublishRate:
-      totalContents === 0
-        ? 0
-        : Math.round((publishedContents / totalContents) * 100),
+      totalContents === 0 ? 0 : Math.round((publishedContents / totalContents) * 100),
   }
 })
 
@@ -174,7 +169,7 @@ const taskStatusOptions = computed(() => ({
           total: {
             show: true,
             label: 'Tamamlama',
-            formatter: () => `${metrics.value.taskCompletionRate}%`
+            formatter: () => `${metrics.value.taskCompletionRate}%`,
           },
         },
       },
@@ -200,13 +195,132 @@ const contentStatusOptions = computed(() => ({
   xaxis: { categories: ['Taslak', 'Onay Bekliyor', 'Onaylandı', 'Yayınlandı'] },
   yaxis: { min: 0, tickAmount: 4 },
 }))
+
+const exportPdf = () => {
+  const doc = new jsPDF() as jsPDF & {
+    lastAutoTable: {
+      finalY: number
+    }
+  }
+
+  doc.setFillColor(37, 99, 235)
+  doc.rect(0, 0, 210, 20, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(16)
+  doc.text('AgencyFlow - Rapor Özeti', 14, 13)
+
+  doc.setTextColor(15, 23, 42)
+  doc.setFontSize(10)
+  doc.text(`Oluşturma tarihi: ${new Date().toLocaleDateString('tr-TR')}`, 14, 30)
+
+  const summaryRows = [
+    ['Toplam içerik', String(metrics.value.totalContents)],
+    ['Yayınlanan içerik', String(metrics.value.publishedContents)],
+    ['Onay bekleyen içerik', String(metrics.value.approvalWaiting)],
+    ['Tamamlanan görev', String(metrics.value.completedTasks)],
+    ['Açık görev', String(metrics.value.openTasks)],
+    ['Aktif proje', String(metrics.value.activeProjects)],
+    ['Tamamlanan proje', String(metrics.value.completedProjects)],
+    ['Görev tamamlama oranı', `${metrics.value.taskCompletionRate}%`],
+    ['İçerik yayın oranı', `${metrics.value.contentPublishRate}%`],
+  ]
+
+  autoTable(doc, {
+    startY: 38,
+    head: [['Metrik', 'Değer']],
+    body: summaryRows,
+    styles: { fontSize: 9, cellPadding: 4 },
+    headStyles: { fillColor: [37, 99, 235], textColor: 255 },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+  })
+
+  const platformRows = platformLabels.map((label, index) => [label, contentByPlatform.value[index]])
+  const taskRows = taskStatusLabels.map((label, index) => [label, taskByStatus.value[index]])
+
+  autoTable(doc, {
+    startY: doc.lastAutoTable.finalY + 12,
+    head: [['Platform', 'İçerik sayısı']],
+    body: platformRows,
+    styles: { fontSize: 9, cellPadding: 4 },
+    headStyles: { fillColor: [15, 118, 110], textColor: 255 },
+  })
+
+  autoTable(doc, {
+    startY: doc.lastAutoTable.finalY + 10,
+    head: [['Görev durumu', 'Adet']],
+    body: taskRows,
+    styles: { fontSize: 9, cellPadding: 4 },
+    headStyles: { fillColor: [234, 88, 12], textColor: 255 },
+  })
+
+  doc.save('agencyflow-rapor.pdf')
+}
+
+const exportExcel = () => {
+  const summarySheet = [
+    ['Metrik', 'Değer'],
+    ['Toplam içerik', metrics.value.totalContents],
+    ['Yayınlanan içerik', metrics.value.publishedContents],
+    ['Onay bekleyen içerik', metrics.value.approvalWaiting],
+    ['Tamamlanan görev', metrics.value.completedTasks],
+    ['Açık görev', metrics.value.openTasks],
+    ['Aktif proje', metrics.value.activeProjects],
+    ['Tamamlanan proje', metrics.value.completedProjects],
+    ['Görev tamamlama oranı', `${metrics.value.taskCompletionRate}%`],
+    ['İçerik yayın oranı', `${metrics.value.contentPublishRate}%`],
+  ]
+
+  const platformSheet = [
+    ['Platform', 'İçerik sayısı'],
+    ...platformLabels.map((label, index) => [label, contentByPlatform.value[index]]),
+  ]
+
+  const taskSheet = [
+    ['Görev durumu', 'Adet'],
+    ...taskStatusLabels.map((label, index) => [label, taskByStatus.value[index]]),
+  ]
+
+  const projectSheet = [
+    ['Proje durumu', 'Adet'],
+    ...projectStatusLabels.map((label, index) => [label, projectByStatus.value[index]]),
+  ]
+
+  const contentStatusSheet = [
+    ['İçerik durumu', 'Adet'],
+    ...contentStatusLabels.map((label, index) => [label, contentByStatus.value[index]]),
+  ]
+
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(summarySheet), 'Özet')
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(platformSheet), 'Platformlar')
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(taskSheet), 'Görevler')
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(projectSheet), 'Projeler')
+  XLSX.utils.book_append_sheet(
+    workbook,
+    XLSX.utils.aoa_to_sheet(contentStatusSheet),
+    'İçerik Durumu',
+  )
+
+  XLSX.writeFile(workbook, 'agencyflow-rapor.xlsx')
+}
 </script>
 
 <template>
   <PageHeader
     title="Raporlar"
     description="Müşteri, içerik, görev ve proje performansının güncel özeti."
-  />
+  >
+    <div class="flex flex-wrap gap-2">
+      <button class="btn-muted" type="button" @click="exportPdf">
+        <FileText class="h-4 w-4" />
+        PDF indir
+      </button>
+      <button class="btn-primary" type="button" @click="exportExcel">
+        <FileSpreadsheet class="h-4 w-4" />
+        Excel indir
+      </button>
+    </div>
+  </PageHeader>
 
   <div class="grid gap-4 md:grid-cols-2">
     <section class="panel p-5">
