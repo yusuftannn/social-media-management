@@ -141,6 +141,39 @@ const priorityTasks = computed(() =>
     .sort((first, second) => first.dueDate.localeCompare(second.dueDate))
     .slice(0, 3),
 )
+
+const recentActivity = computed(() => {
+  const items = [
+    ...workspace.customers.map((customer) => ({
+      type: 'Müşteri',
+      title: customer.companyName,
+      date: customer.createdAt,
+      path: '/customers',
+    })),
+    ...workspace.projects.map((project) => ({
+      type: 'Proje',
+      title: project.projectName,
+      date: project.createdAt,
+      path: '/projects',
+    })),
+    ...workspace.contents.map((content) => ({
+      type: 'İçerik',
+      title: content.title,
+      date: content.createdAt,
+      path: '/content',
+    })),
+    ...workspace.tasks.map((task) => ({
+      type: 'Görev',
+      title: task.title,
+      date: task.createdAt,
+      path: '/tasks',
+    })),
+  ]
+
+  return [...items]
+    .sort((first, second) => new Date(second.date).getTime() - new Date(first.date).getTime())
+    .slice(0, 5)
+})
 </script>
 
 <template>
@@ -263,14 +296,48 @@ const priorityTasks = computed(() =>
     </div>
   </section>
 
-  <section class="panel mt-6 p-4">
-    <div class="mb-4 flex items-center justify-between gap-3">
-      <h2 class="text-base font-semibold">Büyüme ve üretim istatistikleri</h2>
-      <div class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-        <Sparkles class="h-3.5 w-3.5" />
-        Takip aktif
+  <section class="mt-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+    <div class="panel p-4">
+      <div class="mb-4 flex items-center justify-between gap-3">
+        <h2 class="text-base font-semibold">Büyüme ve üretim istatistikleri</h2>
+        <div class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+          <Sparkles class="h-3.5 w-3.5" />
+          Takip aktif
+        </div>
+      </div>
+      <apexchart height="320" type="area" :options="chartOptions" :series="chartSeries" />
+    </div>
+
+    <div class="panel p-4">
+      <div class="mb-4 flex items-center justify-between gap-2">
+        <h2 class="text-base font-semibold">Son etkinlikler</h2>
+        <RouterLink to="/reports" class="text-sm font-medium text-brand hover:text-blue-700">
+          Tüm raporlar
+        </RouterLink>
+      </div>
+
+      <div class="space-y-3">
+        <div
+          v-for="activity in recentActivity"
+          :key="`${activity.type}-${activity.title}-${activity.date}`"
+          class="flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/60"
+        >
+          <div>
+            <p class="text-xs uppercase tracking-[0.2em] text-slate-400">{{ activity.type }}</p>
+            <p class="mt-1 font-medium text-slate-800 dark:text-slate-100">{{ activity.title }}</p>
+          </div>
+          <span class="text-xs text-slate-500 dark:text-slate-400">
+            {{ new Date(activity.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) }}
+          </span>
+        </div>
+
+        <div
+          v-if="recentActivity.length === 0"
+          class="rounded-xl border border-dashed border-slate-200 p-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400"
+        >
+          Henüz etkinlik kaydı yok.
+        </div>
       </div>
     </div>
-    <apexchart height="320" type="area" :options="chartOptions" :series="chartSeries" />
   </section>
 </template>
