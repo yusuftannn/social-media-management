@@ -46,6 +46,7 @@ const emptyForm = (): TeamMemberForm => ({
 const workspace = useWorkspaceStore()
 const toast = useToast()
 const search = ref('')
+const roleFilter = ref<TeamMember['role'] | 'All'>('All')
 const isModalOpen = ref(false)
 const editingId = ref<string | null>(null)
 const saving = ref(false)
@@ -57,9 +58,10 @@ const filteredTeam = computed(() => {
   if (!term) return workspace.team
 
   return workspace.team.filter((member) =>
-    [member.name, member.email, roleLabels[member.role], member.role].some((field) =>
-      field.toLowerCase().includes(term),
-    ),
+    (roleFilter.value === 'All' || member.role === roleFilter.value) &&
+      [member.name, member.email, roleLabels[member.role], member.role].some((field) =>
+        field.toLowerCase().includes(term),
+      ),
   )
 })
 
@@ -189,12 +191,20 @@ const deleteMember = async (member: TeamMember) => {
   </PageHeader>
 
   <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-    <label class="relative w-full max-w-md">
-      <Search
-        class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-      />
-      <input v-model="search" class="input w-full pl-9" placeholder="Ekip üyesi ara" />
-    </label>
+    <div class="flex w-full flex-col gap-3 sm:flex-row">
+      <label class="relative w-full max-w-md">
+        <Search
+          class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+        />
+        <input v-model="search" class="input w-full pl-9" placeholder="Ekip üyesi ara" />
+      </label>
+      <select v-model="roleFilter" class="input w-full sm:w-56">
+        <option value="All">Tüm roller</option>
+        <option v-for="role in roles" :key="role" :value="role">
+          {{ roleLabels[role] }}
+        </option>
+      </select>
+    </div>
     <p class="text-sm text-slate-500 dark:text-slate-400">{{ filteredTeam.length }} üye</p>
   </div>
 

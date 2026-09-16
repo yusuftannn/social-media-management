@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import {
   CalendarDays,
   CheckCircle,
+  CheckCheck,
   Clock,
   MessageSquare,
   Search,
@@ -36,6 +37,7 @@ const updatingId = ref<string | null>(null)
 const error = ref('')
 const editingRevision = ref<SocialContent | null>(null)
 const deletingRevisionId = ref<string | null>(null)
+const selectedIds = ref<string[]>([])
 
 const statusLabels: Record<ContentStatus, string> = {
   Draft: 'Taslak',
@@ -116,6 +118,64 @@ const filteredContents = computed(() => {
     return matchesStatus && matchesSearch
   })
 })
+
+const selectableWaitingContents = computed(() =>
+  filteredContents.value.filter((content) => content.status === CONTENT_STATUS.WAITING),
+)
+
+const allWaitingSelected = computed(
+  () =>
+    selectableWaitingContents.value.length > 0 &&
+    selectableWaitingContents.value.every((content) => selectedIds.value.includes(content.id)),
+)
+
+const toggleSelected = (contentId: string) => {
+  selectedIds.value = selectedIds.value.includes(contentId)
+    ? selectedIds.value.filter((id) => id !== contentId)
+    : [...selectedIds.value, contentId]
+}
+
+const toggleAllWaiting = () => {
+  selectedIds.value = allWaitingSelected.value
+    ? selectedIds.value.filter(
+        (id) => !selectableWaitingContents.value.some((content) => content.id === id),
+      )
+    : [
+        ...new Set([
+          ...selectedIds.value,
+          ...selectableWaitingContents.value.map((content) => content.id),
+        ]),
+      ]
+}
+
+const approveSelected = async () => {
+  const selectedContents = workspace.contents.filter(
+    (content) => selectedIds.value.includes(content.id) && content.status === CONTENT_STATUS.WAITING,
+  )
+
+  if (selectedContents.length === 0) return
+
+  updatingId.value = 'bulk'
+  error.value = ''
+
+  try {
+    for (const content of selectedContents) {
+      await workspace.updateContent(content.id, {
+        status: CONTENT_STATUS.APPROVED,
+        approvalNote: '',
+      })
+    }
+
+    toast.success(`${selectedContents.length} içerik onaylandı.`)
+    selectedIds.value = []
+  } catch {
+    const failureMessage = 'Seçili içeriklerin tamamı onaylanamadı.'
+    error.value = failureMessage
+    toast.error(failureMessage)
+  } finally {
+    updatingId.value = null
+  }
+}
 
 const closeRevisionModal = () => {
   if (updatingId.value) return
@@ -297,6 +357,30 @@ const requestRevision = async () => {
         </div>
       </div>
 
+      <div
+        v-if="selectableWaitingContents.length > 0"
+        class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-900 dark:bg-amber-950/30"
+      >
+        <label class="inline-flex items-center gap-2 text-sm text-amber-800 dark:text-amber-300">
+          <input
+            type="checkbox"
+            :checked="allWaitingSelected"
+            @change="toggleAllWaiting"
+          />
+          Bekleyen içerikleri seç
+        </label>
+        <button
+          v-if="selectedIds.length > 0"
+          class="btn-primary"
+          type="button"
+          :disabled="updatingId === 'bulk'"
+          @click="approveSelected"
+        >
+          <CheckCheck class="h-4 w-4" />
+          {{ updatingId === 'bulk' ? 'Onaylanıyor...' : `${selectedIds.length} içeriği onayla` }}
+        </button>
+      </div>
+
       <p
         v-if="error || workspace.error"
         class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
@@ -315,6 +399,13 @@ const requestRevision = async () => {
           <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div class="min-w-0">
               <div class="flex flex-wrap items-center gap-2">
+                <input
+                  v-if="content.status === CONTENT_STATUS.WAITING"
+                  type="checkbox"
+                  :checked="selectedIds.includes(content.id)"
+                  :aria-label="`${content.title} içeriğini seç`"
+                  @change="toggleSelected(content.id)"
+                />
                 <p class="text-xs font-medium uppercase text-brand">
                   {{ customerName(content.customerId) }}
                 </p>
