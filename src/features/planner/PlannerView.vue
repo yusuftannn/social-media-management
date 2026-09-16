@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { AlertCircle, CalendarCheck, Clock, Lightbulb, Send } from '@lucide/vue'
+import {
+  AlertCircle,
+  CalendarCheck,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Lightbulb,
+  Send,
+} from '@lucide/vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import StatCard from '@/components/ui/StatCard.vue'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
@@ -10,6 +18,7 @@ type ViewMode = 'week' | 'month'
 
 const workspace = useWorkspaceStore()
 const viewMode = ref<ViewMode>('week')
+const anchorDate = ref(new Date())
 
 const statusLabels: Record<ContentStatus, string> = {
   Draft: 'Taslak',
@@ -116,11 +125,11 @@ const publishedThisMonth = computed(() => contentStats.value.publishedThisMonth)
 
 const plannerDays = computed(() => {
   const dayCount = viewMode.value === 'week' ? 7 : 30
-  const today = new Date()
+  const startDate = new Date(anchorDate.value)
 
   return Array.from({ length: dayCount }, (_, index) => {
-    const date = new Date(today)
-    date.setDate(today.getDate() + index)
+    const date = new Date(startDate)
+    date.setDate(startDate.getDate() + index)
 
     const key = toDateKey(date)
 
@@ -132,6 +141,23 @@ const plannerDays = computed(() => {
     }
   })
 })
+
+const plannerRangeLabel = computed(() => {
+  const days = plannerDays.value
+  if (days.length === 0) return ''
+
+  return `${days[0].day} - ${days[days.length - 1].day}`
+})
+
+const movePlanner = (amount: number) => {
+  const nextDate = new Date(anchorDate.value)
+  nextDate.setDate(nextDate.getDate() + amount * (viewMode.value === 'week' ? 7 : 30))
+  anchorDate.value = nextDate
+}
+
+const goToToday = () => {
+  anchorDate.value = new Date()
+}
 
 const platformBreakdown = computed(() => {
   const platforms: ContentPlatform[] = ['Instagram', 'Facebook', 'LinkedIn', 'TikTok', 'X']
@@ -193,6 +219,14 @@ const emptyStateText = (items: SocialContent[]) =>
       class="inline-flex rounded-md border border-line bg-white p-1 dark:border-slate-800 dark:bg-slate-950"
     >
       <button
+        class="rounded px-2 py-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
+        type="button"
+        title="Önceki dönem"
+        @click="movePlanner(-1)"
+      >
+        <ChevronLeft class="h-4 w-4" />
+      </button>
+      <button
         class="rounded px-3 py-1.5 text-sm font-medium transition"
         :class="viewMode === 'week' ? 'bg-brand text-white' : 'text-slate-600 dark:text-slate-300'"
         type="button"
@@ -207,6 +241,21 @@ const emptyStateText = (items: SocialContent[]) =>
         @click="viewMode = 'month'"
       >
         30 gün
+      </button>
+      <button
+        class="rounded px-2 py-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
+        type="button"
+        title="Sonraki dönem"
+        @click="movePlanner(1)"
+      >
+        <ChevronRight class="h-4 w-4" />
+      </button>
+      <button
+        class="rounded px-3 py-1.5 text-sm font-medium text-brand transition hover:bg-blue-50 dark:hover:bg-blue-950/40"
+        type="button"
+        @click="goToToday"
+      >
+        Bugün
       </button>
     </div>
   </PageHeader>
@@ -226,7 +275,7 @@ const emptyStateText = (items: SocialContent[]) =>
           <h2 class="font-semibold">Yayın akışı</h2>
         </div>
         <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          {{ viewMode === 'week' ? 'Önümüzdeki 7 gün' : 'Önümüzdeki 30 gün' }} için planlanan işler.
+          {{ plannerRangeLabel }} · {{ viewMode === 'week' ? '7 günlük' : '30 günlük' }} görünüm
         </p>
       </div>
 

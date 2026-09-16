@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import { CalendarDays, Pencil, Plus, Trash2, X } from '@lucide/vue'
+import { CalendarDays, Pencil, Plus, Search, Trash2, X } from '@lucide/vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { useToast } from '@/composables/useToast'
@@ -54,8 +54,40 @@ const isModalOpen = ref(false)
 const editingId = ref<string | null>(null)
 const saving = ref(false)
 const error = ref('')
+const search = ref('')
+const priorityFilter = ref<Priority | 'All'>('All')
+const assigneeFilter = ref('All')
 const form = reactive<TaskForm>(emptyForm())
 const isEditing = computed(() => editingId.value !== null)
+
+const assignees = computed(() =>
+  [...new Set(workspace.tasks.map((task) => task.assignedTo).filter(Boolean))].sort(),
+)
+
+const filteredTasks = computed(() => {
+  const term = search.value.trim().toLowerCase()
+
+  return workspace.tasks.filter((task) => {
+    const matchesSearch =
+      !term || [task.title, task.description, task.assignedTo].some((field) =>
+        field.toLowerCase().includes(term),
+      )
+    const matchesPriority = priorityFilter.value === 'All' || task.priority === priorityFilter.value
+    const matchesAssignee = assigneeFilter.value === 'All' || task.assignedTo === assigneeFilter.value
+
+    return matchesSearch && matchesPriority && matchesAssignee
+  })
+})
+
+const hasActiveFilters = computed(
+  () => Boolean(search.value.trim()) || priorityFilter.value !== 'All' || assigneeFilter.value !== 'All',
+)
+
+const clearFilters = () => {
+  search.value = ''
+  priorityFilter.value = 'All'
+  assigneeFilter.value = 'All'
+}
 
 const tasksByStatus = computed<Record<TaskStatus, Task[]>>(() => {
   const groups: Record<TaskStatus, Task[]> = {
@@ -65,7 +97,7 @@ const tasksByStatus = computed<Record<TaskStatus, Task[]>>(() => {
     Done: [],
   }
 
-  for (const task of workspace.tasks) {
+  for (const task of filteredTasks.value) {
     groups[task.status].push(task)
   }
 
@@ -199,8 +231,47 @@ const deleteTask = async (task: Task) => {
     {{ error || workspace.error }}
   </p>
 
+  <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div class="flex w-full flex-col gap-3 sm:flex-row">
+      <label class="relative w-full max-w-md">
+        <Search
+          class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+        />
+        <input v-model="search" class="input w-full pl-9" placeholder="Görev veya kişi ara" />
+      </label>
+      <select v-model="priorityFilter" class="input w-full sm:w-40">
+        <option value="All">Tüm öncelikler</option>
+        <option v-for="priority in priorities" :key="priority" :value="priority">
+          {{ PRIORITY_CONFIG[priority].label }}
+        </option>
+      </select>
+      <select v-model="assigneeFilter" class="input w-full sm:w-48">
+        <option value="All">Tüm sorumlular</option>
+        <option v-for="assignee in assignees" :key="assignee" :value="assignee">
+          {{ assignee }}
+        </option>
+      </select>
+    </div>
+    <div class="flex items-center gap-2">
+      <p class="shrink-0 text-sm text-slate-500 dark:text-slate-400">
+        {{ filteredTasks.length }} görev
+      </p>
+      <button
+        v-if="hasActiveFilters"
+        class="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+        type="button"
+        @click="clearFilters"
+      >
+        Filtreleri temizle
+      </button>
+    </div>
+  </div>
+
   <div v-if="workspace.loading" class="panel p-6 text-sm text-slate-500">
     Görevler yükleniyor...
+  </div>
+  <div v-else-if="filteredTasks.length === 0" class="panel p-6 text-sm text-slate-500">
+    Filtrelere uygun görev bulunamadı.
   </div>
   <div v-else class="grid gap-4 lg:grid-cols-4">
     <section

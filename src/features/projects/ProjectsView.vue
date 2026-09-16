@@ -39,6 +39,7 @@ const isModalOpen = ref(false)
 const editingId = ref<string | null>(null)
 const saving = ref(false)
 const error = ref('')
+const updatingStatusId = ref<string | null>(null)
 const startDateFilter = ref('')
 const endDateFilter = ref('')
 const form = reactive<ProjectForm>(emptyForm())
@@ -198,6 +199,28 @@ const deleteProject = async (project: Project) => {
     toast.error(message)
   }
 }
+
+const updateProjectStatus = async (project: Project, event: Event) => {
+  const select = event.target as HTMLSelectElement
+  const status = select.value as ProjectStatus
+
+  if (status === project.status) return
+
+  updatingStatusId.value = project.id
+  error.value = ''
+
+  try {
+    await workspace.updateProject(project.id, { status })
+    toast.success(`"${project.projectName}" durumu güncellendi.`)
+  } catch {
+    select.value = project.status
+    const message = 'Proje durumu güncellenemedi.'
+    error.value = message
+    toast.error(message)
+  } finally {
+    updatingStatusId.value = null
+  }
+}
 </script>
 
 <template>
@@ -275,12 +298,18 @@ const deleteProject = async (project: Project) => {
           </p>
           <h2 class="mt-1 font-semibold">{{ project.projectName }}</h2>
         </div>
-        <span
-          class="shrink-0 rounded-full px-2.5 py-1 text-xs font-medium"
+        <select
+          class="max-w-32 rounded-full border-0 px-2.5 py-1 text-xs font-medium outline-none"
           :class="statusClasses[project.status]"
+          :value="project.status"
+          :disabled="updatingStatusId === project.id"
+          title="Proje durumunu hızlıca değiştir"
+          @change="updateProjectStatus(project, $event)"
         >
-          {{ statusLabels[project.status] }}
-        </span>
+          <option v-for="status in statuses" :key="status" :value="status">
+            {{ statusLabels[status] }}
+          </option>
+        </select>
       </div>
 
       <p class="mt-3 line-clamp-3 text-sm text-slate-500 dark:text-slate-400">
