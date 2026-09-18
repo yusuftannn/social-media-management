@@ -83,10 +83,46 @@ const hasActiveFilters = computed(
   () => Boolean(search.value.trim()) || priorityFilter.value !== 'All' || assigneeFilter.value !== 'All',
 )
 
+const selectedTaskIds = ref<string[]>([])
+const selectedTaskCount = computed(() => selectedTaskIds.value.length)
+
 const clearFilters = () => {
   search.value = ''
   priorityFilter.value = 'All'
   assigneeFilter.value = 'All'
+}
+
+const toggleTaskSelection = (taskId: string) => {
+  const alreadySelected = selectedTaskIds.value.includes(taskId)
+
+  selectedTaskIds.value = alreadySelected
+    ? selectedTaskIds.value.filter((id) => id !== taskId)
+    : [...selectedTaskIds.value, taskId]
+}
+
+const isTaskSelected = (taskId: string) => selectedTaskIds.value.includes(taskId)
+
+const clearTaskSelection = () => {
+  selectedTaskIds.value = []
+}
+
+const bulkUpdateSelectedStatus = async (status: TaskStatus) => {
+  if (!selectedTaskIds.value.length) return
+
+  const selectedTasks = workspace.tasks.filter((task) => selectedTaskIds.value.includes(task.id))
+
+  if (!selectedTasks.length) return
+
+  try {
+    for (const task of selectedTasks) {
+      await workspace.updateTask(task.id, { status })
+    }
+
+    clearTaskSelection()
+    toast.success(`${selectedTasks.length} görev ${statusLabels[status].toLowerCase()} olarak güncellendi.`)
+  } catch {
+    toast.error('Seçili görevler güncellenemedi.')
+  }
 }
 
 const tasksByStatus = computed<Record<TaskStatus, Task[]>>(() => {
@@ -267,6 +303,33 @@ const deleteTask = async (task: Task) => {
     </div>
   </div>
 
+  <div
+    v-if="selectedTaskCount > 0"
+    class="mb-4 flex flex-col gap-3 rounded-xl border border-brand/20 bg-blue-50 p-3 dark:border-brand/40 dark:bg-blue-950/30 sm:flex-row sm:items-center sm:justify-between"
+  >
+    <div>
+      <p class="text-sm font-semibold text-blue-800 dark:text-blue-200">
+        {{ selectedTaskCount }} görev seçildi
+      </p>
+      <p class="text-xs text-blue-700 dark:text-blue-300">Toplu işlemi hızlıca uygulayın.</p>
+    </div>
+
+    <div class="flex flex-wrap gap-2">
+      <button class="btn-muted h-9 px-3" type="button" @click="bulkUpdateSelectedStatus('In Progress')">
+        Devam ettir
+      </button>
+      <button class="btn-muted h-9 px-3" type="button" @click="bulkUpdateSelectedStatus('Review')">
+        İncelemede
+      </button>
+      <button class="btn-primary h-9 px-3" type="button" @click="bulkUpdateSelectedStatus('Done')">
+        Tamamla
+      </button>
+      <button class="btn-muted h-9 px-3" type="button" @click="clearTaskSelection">
+        Seçimi temizle
+      </button>
+    </div>
+  </div>
+
   <div v-if="workspace.loading" class="panel p-6 text-sm text-slate-500">
     Görevler yükleniyor...
   </div>
@@ -300,11 +363,15 @@ const deleteTask = async (task: Task) => {
 
       <div v-else class="grid gap-3">
         <article v-for="task in tasksByStatus[column]" :key="task.id" class="panel p-3">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <h3 class="text-sm font-medium">{{ task.title }}</h3>
-              <p class="mt-2 line-clamp-3 text-xs text-slate-500">{{ task.description }}</p>
-            </div>
+          <div class="mb-3 flex items-center justify-between gap-2">
+            <label class="flex items-center gap-2 text-[11px] font-medium text-slate-500">
+              <input
+                :checked="isTaskSelected(task.id)"
+                type="checkbox"
+                @change="toggleTaskSelection(task.id)"
+              />
+              Seç
+            </label>
             <div class="flex shrink-0 gap-1">
               <button
                 class="btn-muted h-8 w-8 p-0"
@@ -322,6 +389,13 @@ const deleteTask = async (task: Task) => {
               >
                 <Trash2 class="h-3.5 w-3.5" />
               </button>
+            </div>
+          </div>
+
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h3 class="text-sm font-medium">{{ task.title }}</h3>
+              <p class="mt-2 line-clamp-3 text-xs text-slate-500">{{ task.description }}</p>
             </div>
           </div>
 

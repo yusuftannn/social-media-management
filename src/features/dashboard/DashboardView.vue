@@ -142,6 +142,24 @@ const priorityTasks = computed(() =>
     .slice(0, 3),
 )
 
+const taskActionSummary = computed(() => {
+  const today = new Date()
+
+  return {
+    dueSoon: workspace.tasks.filter((task) => {
+      if (task.status === 'Done') return false
+
+      const dueDate = new Date(task.dueDate)
+      if (Number.isNaN(dueDate.getTime())) return false
+
+      const diffDays = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+      return diffDays >= 0 && diffDays <= 3
+    }).length,
+    reviewQueue: workspace.tasks.filter((task) => task.status === 'Review').length,
+    blocked: workspace.tasks.filter((task) => task.priority === 'High' && task.status !== 'Done').length,
+  }
+})
+
 const recentActivity = computed(() => {
   const items = [
     ...workspace.customers.map((customer) => ({
@@ -291,6 +309,34 @@ const recentActivity = computed(() => {
           <p class="mt-1 text-xs text-blue-700/80 dark:text-blue-300/80">
             Yöneticilerin onay sürecini hızlandırması önerilir.
           </p>
+        </div>
+
+        <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/70">
+          <div class="flex items-center justify-between gap-2">
+            <p class="text-xs font-medium uppercase tracking-[0.2em] text-slate-400">Hızlı aksiyon</p>
+            <RouterLink to="/tasks" class="text-[11px] font-medium text-brand">Göreve git</RouterLink>
+          </div>
+
+          <div class="mt-3 grid grid-cols-3 gap-2 text-center text-[11px]">
+            <div class="rounded-lg bg-slate-100 p-2 dark:bg-slate-800">
+              <p class="text-base font-semibold text-slate-800 dark:text-slate-100">
+                {{ taskActionSummary.dueSoon }}
+              </p>
+              <p class="text-slate-500 dark:text-slate-400">3 g içinde</p>
+            </div>
+            <div class="rounded-lg bg-amber-50 p-2 dark:bg-amber-950/40">
+              <p class="text-base font-semibold text-amber-700 dark:text-amber-300">
+                {{ taskActionSummary.reviewQueue }}
+              </p>
+              <p class="text-amber-700 dark:text-amber-300">İnceleme</p>
+            </div>
+            <div class="rounded-lg bg-rose-50 p-2 dark:bg-rose-950/40">
+              <p class="text-base font-semibold text-rose-700 dark:text-rose-300">
+                {{ taskActionSummary.blocked }}
+              </p>
+              <p class="text-rose-700 dark:text-rose-300">Yüksek öncelik</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
