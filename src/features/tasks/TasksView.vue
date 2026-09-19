@@ -7,6 +7,7 @@ import { useToast } from '@/composables/useToast'
 import type { Priority, Task, TaskStatus } from '@/types'
 
 type TaskForm = Omit<Task, 'id' | 'createdAt'>
+type DueFilter = 'All' | 'Overdue' | 'Today' | 'This Week'
 
 const workspace = useWorkspaceStore()
 const columns: TaskStatus[] = ['To Do', 'In Progress', 'Review', 'Done']
@@ -57,8 +58,25 @@ const error = ref('')
 const search = ref('')
 const priorityFilter = ref<Priority | 'All'>('All')
 const assigneeFilter = ref('All')
+const dueFilter = ref<DueFilter>('All')
 const form = reactive<TaskForm>(emptyForm())
 const isEditing = computed(() => editingId.value !== null)
+
+const dateKey = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+    date.getDate(),
+  ).padStart(2, '0')}`
+
+const todayKey = () => dateKey(new Date())
+
+const endOfThisWeekKey = () => {
+  const end = new Date()
+  const daysUntilSunday = (7 - end.getDay()) % 7
+  end.setDate(end.getDate() + daysUntilSunday)
+  return dateKey(end)
+}
+
+const isOverdue = (task: Task) => task.status !== 'Done' && task.dueDate < todayKey()
 
 const assignees = computed(() =>
   [...new Set(workspace.tasks.map((task) => task.assignedTo).filter(Boolean))].sort(),
@@ -74,13 +92,24 @@ const filteredTasks = computed(() => {
       )
     const matchesPriority = priorityFilter.value === 'All' || task.priority === priorityFilter.value
     const matchesAssignee = assigneeFilter.value === 'All' || task.assignedTo === assigneeFilter.value
+    const matchesDueDate =
+      dueFilter.value === 'All' ||
+      (dueFilter.value === 'Overdue' && isOverdue(task)) ||
+      (dueFilter.value === 'Today' && task.dueDate === todayKey()) ||
+      (dueFilter.value === 'This Week' &&
+        task.dueDate >= todayKey() &&
+        task.dueDate <= endOfThisWeekKey())
 
-    return matchesSearch && matchesPriority && matchesAssignee
+    return matchesSearch && matchesPriority && matchesAssignee && matchesDueDate
   })
 })
 
 const hasActiveFilters = computed(
-  () => Boolean(search.value.trim()) || priorityFilter.value !== 'All' || assigneeFilter.value !== 'All',
+  () =>
+    Boolean(search.value.trim()) ||
+    priorityFilter.value !== 'All' ||
+    assigneeFilter.value !== 'All' ||
+    dueFilter.value !== 'All',
 )
 
 const selectedTaskIds = ref<string[]>([])
@@ -90,6 +119,7 @@ const clearFilters = () => {
   search.value = ''
   priorityFilter.value = 'All'
   assigneeFilter.value = 'All'
+  dueFilter.value = 'All'
 }
 
 const toggleTaskSelection = (taskId: string) => {
@@ -287,6 +317,12 @@ const deleteTask = async (task: Task) => {
           {{ assignee }}
         </option>
       </select>
+      <select v-model="dueFilter" class="input w-full sm:w-44">
+        <option value="All">Tüm tarihler</option>
+        <option value="Overdue">Gecikenler</option>
+        <option value="Today">Bugün</option>
+        <option value="This Week">Bu hafta</option>
+      </select>
     </div>
     <div class="flex items-center gap-2">
       <p class="shrink-0 text-sm text-slate-500 dark:text-slate-400">
@@ -410,7 +446,9 @@ const deleteTask = async (task: Task) => {
           </div>
           <div class="mt-3 flex items-center gap-1.5 text-xs text-slate-500">
             <CalendarDays class="h-3.5 w-3.5" />
-            <span>{{ task.dueDate }}</span>
+            <span :class="isOverdue(task) ? 'font-semibold text-red-600 dark:text-red-400' : ''">
+              {{ task.dueDate }}{{ isOverdue(task) ? ' · Gecikti' : '' }}
+            </span>
           </div>
         </article>
       </div>

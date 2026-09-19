@@ -10,6 +10,7 @@ import {
   Search,
   Sparkles,
   Trash2,
+  RotateCcw,
   X,
 } from '@lucide/vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
@@ -204,6 +205,23 @@ const filteredContents = computed(() => {
       .some((field) => field.toLowerCase().includes(term))
   })
 })
+
+const hasActiveFilters = computed(
+  () =>
+    Boolean(search.value.trim()) ||
+    statusFilter.value !== 'All' ||
+    platformFilter.value !== 'All' ||
+    Boolean(publishStartDate.value) ||
+    Boolean(publishEndDate.value),
+)
+
+const clearFilters = () => {
+  search.value = ''
+  statusFilter.value = 'All'
+  platformFilter.value = 'All'
+  publishStartDate.value = ''
+  publishEndDate.value = ''
+}
 
 const resetForm = () => {
   Object.assign(form, emptyForm())
@@ -434,9 +452,20 @@ const deleteContent = async (content: SocialContent) => {
         title="Bitiş tarihi"
       />
     </div>
-    <p class="shrink-0 text-sm text-slate-500 dark:text-slate-400">
-      {{ filteredContents.length }} içerik
-    </p>
+    <div class="flex shrink-0 items-center gap-2">
+      <button
+        v-if="hasActiveFilters"
+        class="btn-muted h-9 px-3"
+        type="button"
+        @click="clearFilters"
+      >
+        <RotateCcw class="h-4 w-4" />
+        Filtreleri temizle
+      </button>
+      <p class="text-sm text-slate-500 dark:text-slate-400">
+        {{ filteredContents.length }} içerik
+      </p>
+    </div>
   </div>
 
   <p

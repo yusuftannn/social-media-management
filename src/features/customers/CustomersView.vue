@@ -355,8 +355,16 @@ const deleteCustomer = async (customer: Customer) => {
               </div>
             </td>
             <td class="p-4">{{ customer.contactName }}</td>
-            <td class="p-4">{{ customer.email }}</td>
-            <td class="p-4">{{ customer.phone }}</td>
+            <td class="p-4">
+              <a class="text-brand hover:underline" :href="`mailto:${customer.email}`">
+                {{ customer.email }}
+              </a>
+            </td>
+            <td class="p-4">
+              <a class="text-brand hover:underline" :href="`tel:${customer.phone}`">
+                {{ customer.phone }}
+              </a>
+            </td>
             <td class="p-4">
               <a
                 v-if="customer.website"
