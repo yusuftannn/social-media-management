@@ -19,6 +19,7 @@ type ViewMode = 'week' | 'month'
 const workspace = useWorkspaceStore()
 const viewMode = ref<ViewMode>('week')
 const anchorDate = ref(new Date())
+const platformFilter = ref<ContentPlatform | 'All'>('All')
 
 const statusLabels: Record<ContentStatus, string> = {
   Draft: 'Taslak',
@@ -99,10 +100,16 @@ const sortedContents = computed(() =>
   ),
 )
 
+const visibleContents = computed(() =>
+  sortedContents.value.filter(
+    (content) => platformFilter.value === 'All' || content.platform === platformFilter.value,
+  ),
+)
+
 const contentsByDate = computed(() => {
   const map = new Map<string, SocialContent[]>()
 
-  for (const content of sortedContents.value) {
+  for (const content of visibleContents.value) {
     const items = map.get(content.publishDate)
 
     if (items) {
@@ -172,7 +179,7 @@ const platformBreakdown = computed(() => {
     X: 0,
   }
 
-  for (const content of workspace.contents) {
+  for (const content of visibleContents.value) {
     counts[content.platform]++
   }
 
@@ -215,48 +222,56 @@ const emptyStateText = (items: SocialContent[]) =>
     title="Yayın Planlayıcı"
     description="Yaklaşan içerikleri, onay darboğazlarını ve platform yoğunluğunu tek ekranda takip edin."
   >
-    <div
-      class="inline-flex rounded-md border border-line bg-white p-1 dark:border-slate-800 dark:bg-slate-950"
-    >
-      <button
+    <div class="flex flex-wrap items-center justify-end gap-2">
+      <select v-model="platformFilter" class="input h-9 w-36" aria-label="Platform filtresi">
+        <option value="All">Tüm platformlar</option>
+        <option v-for="platform in platformLabels" :key="platform" :value="platform">
+          {{ platform }}
+        </option>
+      </select>
+      <div
+        class="inline-flex rounded-md border border-line bg-white p-1 dark:border-slate-800 dark:bg-slate-950"
+      >
+        <button
         class="rounded px-2 py-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
         type="button"
         title="Önceki dönem"
         @click="movePlanner(-1)"
       >
         <ChevronLeft class="h-4 w-4" />
-      </button>
-      <button
+        </button>
+        <button
         class="rounded px-3 py-1.5 text-sm font-medium transition"
         :class="viewMode === 'week' ? 'bg-brand text-white' : 'text-slate-600 dark:text-slate-300'"
         type="button"
         @click="viewMode = 'week'"
       >
         7 gün
-      </button>
-      <button
+        </button>
+        <button
         class="rounded px-3 py-1.5 text-sm font-medium transition"
         :class="viewMode === 'month' ? 'bg-brand text-white' : 'text-slate-600 dark:text-slate-300'"
         type="button"
         @click="viewMode = 'month'"
       >
         30 gün
-      </button>
-      <button
+        </button>
+        <button
         class="rounded px-2 py-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
         type="button"
         title="Sonraki dönem"
         @click="movePlanner(1)"
       >
         <ChevronRight class="h-4 w-4" />
-      </button>
-      <button
+        </button>
+        <button
         class="rounded px-3 py-1.5 text-sm font-medium text-brand transition hover:bg-blue-50 dark:hover:bg-blue-950/40"
         type="button"
         @click="goToToday"
       >
         Bugün
-      </button>
+        </button>
+      </div>
     </div>
   </PageHeader>
 

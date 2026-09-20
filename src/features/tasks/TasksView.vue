@@ -8,6 +8,7 @@ import type { Priority, Task, TaskStatus } from '@/types'
 
 type TaskForm = Omit<Task, 'id' | 'createdAt'>
 type DueFilter = 'All' | 'Overdue' | 'Today' | 'This Week'
+type TaskSort = 'DueDate' | 'Priority' | 'CreatedAt'
 
 const workspace = useWorkspaceStore()
 const columns: TaskStatus[] = ['To Do', 'In Progress', 'Review', 'Done']
@@ -59,6 +60,7 @@ const search = ref('')
 const priorityFilter = ref<Priority | 'All'>('All')
 const assigneeFilter = ref('All')
 const dueFilter = ref<DueFilter>('All')
+const sortBy = ref<TaskSort>('DueDate')
 const form = reactive<TaskForm>(emptyForm())
 const isEditing = computed(() => editingId.value !== null)
 
@@ -103,6 +105,22 @@ const filteredTasks = computed(() => {
     return matchesSearch && matchesPriority && matchesAssignee && matchesDueDate
   })
 })
+
+const priorityRank: Record<Priority, number> = { High: 0, Medium: 1, Low: 2 }
+
+const sortedFilteredTasks = computed(() =>
+  [...filteredTasks.value].sort((first, second) => {
+    if (sortBy.value === 'Priority') {
+      return priorityRank[first.priority] - priorityRank[second.priority]
+    }
+
+    if (sortBy.value === 'CreatedAt') {
+      return second.createdAt.localeCompare(first.createdAt)
+    }
+
+    return first.dueDate.localeCompare(second.dueDate)
+  }),
+)
 
 const hasActiveFilters = computed(
   () =>
@@ -163,7 +181,7 @@ const tasksByStatus = computed<Record<TaskStatus, Task[]>>(() => {
     Done: [],
   }
 
-  for (const task of filteredTasks.value) {
+  for (const task of sortedFilteredTasks.value) {
     groups[task.status].push(task)
   }
 
@@ -322,6 +340,11 @@ const deleteTask = async (task: Task) => {
         <option value="Overdue">Gecikenler</option>
         <option value="Today">Bugün</option>
         <option value="This Week">Bu hafta</option>
+      </select>
+      <select v-model="sortBy" class="input w-full sm:w-48">
+        <option value="DueDate">Bitiş tarihine göre</option>
+        <option value="Priority">Önceliğe göre</option>
+        <option value="CreatedAt">En yeni eklenenler</option>
       </select>
     </div>
     <div class="flex items-center gap-2">

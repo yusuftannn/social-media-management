@@ -42,6 +42,7 @@ const error = ref('')
 const updatingStatusId = ref<string | null>(null)
 const startDateFilter = ref('')
 const endDateFilter = ref('')
+const overdueOnly = ref(false)
 const form = reactive<ProjectForm>(emptyForm())
 
 const customerMap = computed(() =>
@@ -49,13 +50,16 @@ const customerMap = computed(() =>
 )
 
 const customerName = (customerId: string) => customerMap.value[customerId] ?? 'Müşteri bulunamadı'
+const isOverdue = (project: Project) =>
+  project.status !== 'Completed' && project.endDate < new Date().toISOString().slice(0, 10)
 
 const hasActiveFilters = computed(
   () =>
     Boolean(search.value.trim()) ||
     statusFilter.value !== 'All' ||
     startDateFilter.value !== '' ||
-    endDateFilter.value !== '',
+    endDateFilter.value !== '' ||
+    overdueOnly.value,
 )
 
 const filteredProjects = computed(() => {
@@ -73,8 +77,9 @@ const filteredProjects = computed(() => {
     const matchesStartDate = !startDateFilter.value || project.startDate >= startDateFilter.value
 
     const matchesEndDate = !endDateFilter.value || project.endDate <= endDateFilter.value
+    const matchesOverdue = !overdueOnly.value || isOverdue(project)
 
-    return matchesStatus && matchesSearch && matchesStartDate && matchesEndDate
+    return matchesStatus && matchesSearch && matchesStartDate && matchesEndDate && matchesOverdue
   })
 })
 
@@ -253,6 +258,12 @@ const updateProjectStatus = async (project: Project, event: Event) => {
       <input v-model="startDateFilter" type="date" class="input w-full sm:w-auto" />
 
       <input v-model="endDateFilter" type="date" class="input w-full sm:w-auto" />
+      <label
+        class="inline-flex h-10 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900"
+      >
+        <input v-model="overdueOnly" type="checkbox" />
+        Gecikenler
+      </label>
     </div>
     <div class="flex items-center gap-2">
       <p class="shrink-0 text-sm text-slate-500 dark:text-slate-400">
@@ -262,7 +273,7 @@ const updateProjectStatus = async (project: Project, event: Event) => {
         v-if="hasActiveFilters"
         class="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
         type="button"
-        @click="() => { search = ''; statusFilter = 'All'; startDateFilter = ''; endDateFilter = '' }"
+        @click="() => { search = ''; statusFilter = 'All'; startDateFilter = ''; endDateFilter = ''; overdueOnly = false }"
       >
         Filtreleri temizle
       </button>
@@ -314,6 +325,10 @@ const updateProjectStatus = async (project: Project, event: Event) => {
 
       <p class="mt-3 line-clamp-3 text-sm text-slate-500 dark:text-slate-400">
         {{ project.description || 'Açıklama bulunmuyor.' }}
+      </p>
+
+      <p v-if="isOverdue(project)" class="mt-3 text-xs font-semibold text-red-600 dark:text-red-400">
+        Geciken proje
       </p>
 
       <div class="mt-auto flex items-end justify-between gap-3 pt-5">
