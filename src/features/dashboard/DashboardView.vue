@@ -192,6 +192,17 @@ const recentActivity = computed(() => {
     .sort((first, second) => new Date(second.date).getTime() - new Date(first.date).getTime())
     .slice(0, 5)
 })
+
+const campaignSnapshot = computed(() =>
+  [...workspace.projects]
+    .sort((first, second) => new Date(first.endDate).getTime() - new Date(second.endDate).getTime())
+    .slice(0, 3)
+    .map((project) => ({
+      ...project,
+      customer: customerName(project.customerId),
+      progress: project.status === 'Completed' ? 100 : project.status === 'Active' ? 72 : 52,
+    })),
+)
 </script>
 
 <template>
@@ -203,6 +214,47 @@ const recentActivity = computed(() => {
     <StatCard label="Bekleyen Görevler" :value="pendingTasks" tone="orange" />
     <StatCard label="Bu Ay Tamamlanan İşler" :value="completedTasks" tone="slate" />
   </div>
+
+  <section class="mt-6 panel p-5">
+    <div class="mb-4 flex items-center justify-between gap-3">
+      <div>
+        <p class="text-xs font-medium uppercase tracking-[0.2em] text-slate-400">Kampanya akışı</p>
+        <h2 class="mt-2 text-lg font-semibold">Yaklaşan teslim ve ilerleme</h2>
+      </div>
+      <RouterLink to="/campaigns" class="text-sm font-medium text-brand hover:text-blue-700">
+        Tüm kampanyalar
+      </RouterLink>
+    </div>
+
+    <div class="grid gap-3 lg:grid-cols-3">
+      <div
+        v-for="campaign in campaignSnapshot"
+        :key="campaign.id"
+        class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70"
+      >
+        <div class="flex items-center justify-between gap-2">
+          <p class="text-sm font-medium text-slate-900 dark:text-slate-100">
+            {{ campaign.projectName }}
+          </p>
+          <span class="rounded-full bg-blue-50 px-2 py-1 text-[10px] font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+            {{ campaign.status }}
+          </span>
+        </div>
+        <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">
+          {{ campaign.customer }}
+        </p>
+        <div class="mt-3 space-y-2">
+          <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+            <span>İlerleme</span>
+            <span>{{ campaign.progress }}%</span>
+          </div>
+          <div class="h-2 rounded-full bg-slate-200 dark:bg-slate-800">
+            <div class="h-full rounded-full bg-brand" :style="{ width: `${campaign.progress}%` }" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <section class="mt-6 grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
     <div class="panel p-5">

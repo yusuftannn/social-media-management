@@ -15,6 +15,7 @@ import {
   Settings,
   Sparkles,
   Sun,
+  Target,
   Users,
   X,
 } from '@lucide/vue'
@@ -29,6 +30,7 @@ const nav = [
   { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
   { label: 'Müşteriler', to: '/customers', icon: Users },
   { label: 'Projeler', to: '/projects', icon: CheckSquare },
+  { label: 'Kampanyalar', to: '/campaigns', icon: Target },
   { label: 'Onaylar', to: '/approvals', icon: ClipboardCheck },
   { label: 'İçerik', to: '/content', icon: CalendarDays },
   { label: 'Planlayıcı', to: '/planner', icon: CalendarCheck },
