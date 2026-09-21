@@ -28,6 +28,7 @@ import WhatsappButton from '@/components/ui/WhatsappButton.vue'
 
 const nav = [
   { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
+  { label: 'Hızlı Başlangıç', to: '/quickstart', icon: Sparkles },
   { label: 'Müşteriler', to: '/customers', icon: Users },
   { label: 'Projeler', to: '/projects', icon: CheckSquare },
   { label: 'Kampanyalar', to: '/campaigns', icon: Target },
@@ -36,6 +37,8 @@ const nav = [
   { label: 'Planlayıcı', to: '/planner', icon: CalendarCheck },
   { label: 'Görevler', to: '/tasks', icon: CheckSquare },
   { label: 'Ekip', to: '/team', icon: Users },
+  { label: 'Operasyon', to: '/operations', icon: Clock3 },
+  { label: 'Briefler', to: '/briefs', icon: Sparkles },
   { label: 'AI', to: '/ai', icon: Bot },
   { label: 'Raporlar', to: '/reports', icon: ChartColumn },
   { label: 'Ayarlar', to: '/settings', icon: Settings },

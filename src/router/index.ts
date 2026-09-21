@@ -26,6 +26,7 @@ const router = createRouter({
       children: [
         { path: '', redirect: '/dashboard' },
         { path: 'dashboard', name: 'dashboard', component: () => import('@/features/dashboard/DashboardView.vue') },
+        { path: 'quickstart', name: 'quickstart', component: () => import('@/features/quickstart/QuickStartView.vue') },
         { path: 'customers', name: 'customers', component: () => import('@/features/customers/CustomersView.vue') },
         { path: 'projects', name: 'projects', component: () => import('@/features/projects/ProjectsView.vue') },
         { path: 'campaigns', name: 'campaigns', component: () => import('@/features/campaigns/CampaignsView.vue') },
@@ -35,6 +36,8 @@ const router = createRouter({
         { path: 'planner', name: 'planner', component: () => import('@/features/planner/PlannerView.vue') },
         { path: 'tasks', name: 'tasks', component: () => import('@/features/tasks/TasksView.vue') },
         { path: 'team', name: 'team', component: () => import('@/features/team/TeamView.vue') },
+        { path: 'operations', name: 'operations', component: () => import('@/features/operations/OperationsView.vue') },
+        { path: 'briefs', name: 'briefs', component: () => import('@/features/briefs/BriefsView.vue') },
         { path: 'ai', name: 'ai', component: () => import('@/features/ai/AiAssistantView.vue') },
         { path: 'reports', name: 'reports', component: () => import('@/features/reports/ReportsView.vue') },
         { path: 'settings', name: 'settings', component: () => import('@/features/settings/SettingsView.vue') },
