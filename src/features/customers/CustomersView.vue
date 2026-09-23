@@ -259,6 +259,25 @@ const deleteCustomer = async (customer: Customer) => {
     toast.error(message)
   }
 }
+
+const customerSummary = computed(() => [
+  {
+    label: 'Toplam müşteri',
+    value: workspace.customers.length,
+  },
+  {
+    label: 'Web sitesi',
+    value: workspace.customers.filter((customer) => customer.website).length,
+  },
+  {
+    label: 'Notlu kayıt',
+    value: workspace.customers.filter((customer) => customer.notes?.trim()).length,
+  },
+  {
+    label: 'Logo ekli',
+    value: workspace.customers.filter((customer) => customer.logo?.trim()).length,
+  },
+])
 </script>
 
 <template>
@@ -271,6 +290,13 @@ const deleteCustomer = async (customer: Customer) => {
       Müşteri ekle
     </button>
   </PageHeader>
+
+  <div class="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div v-for="item in customerSummary" :key="item.label" class="panel p-4">
+      <p class="text-xs uppercase tracking-[0.2em] text-slate-400">{{ item.label }}</p>
+      <p class="mt-3 text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ item.value }}</p>
+    </div>
+  </div>
 
   <div class="mb-4 flex flex-col gap-3">
     <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">

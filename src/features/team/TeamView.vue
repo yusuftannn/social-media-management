@@ -53,16 +53,50 @@ const saving = ref(false)
 const error = ref('')
 const form = reactive<TeamMemberForm>(emptyForm())
 
+const memberRoleCounts = computed(() =>
+  roles.reduce(
+    (acc, role) => {
+      acc[role] = workspace.team.filter((member) => member.role === role).length
+      return acc
+    },
+    {} as Record<TeamMember['role'], number>,
+  ),
+)
+
+const memberLoad = computed(() => {
+  const assignments = workspace.tasks.reduce(
+    (acc, task) => {
+      const key = task.assignedTo.trim()
+      if (!key) return acc
+      acc[key] = (acc[key] ?? 0) + 1
+      return acc
+    },
+    {} as Record<string, number>,
+  )
+
+  return workspace.team.map((member) => ({
+    ...member,
+    taskCount: assignments[member.name] ?? 0,
+  }))
+})
+
 const filteredTeam = computed(() => {
   const term = search.value.trim().toLowerCase()
-  if (!term) return workspace.team
 
-  return workspace.team.filter((member) =>
-    (roleFilter.value === 'All' || member.role === roleFilter.value) &&
+  return workspace.team.filter((member) => {
+    const matchesRole = roleFilter.value === 'All' || member.role === roleFilter.value
+
+    if (!term) {
+      return matchesRole
+    }
+
+    return (
+      matchesRole &&
       [member.name, member.email, roleLabels[member.role], member.role].some((field) =>
         field.toLowerCase().includes(term),
-      ),
-  )
+      )
+    )
+  })
 })
 
 const initials = (name: string) =>
@@ -183,12 +217,31 @@ const deleteMember = async (member: TeamMember) => {
 </script>
 
 <template>
-  <PageHeader title="Ekip" description="Ajans rolleri ve ekip üyeleri.">
+  <PageHeader title="Ekip" description="Ajans rolleri, ekip dağılımı ve çalışma yükü görünümü.">
     <button class="btn-primary" type="button" @click="openCreateModal">
       <Plus class="h-4 w-4" />
       Üye ekle
     </button>
   </PageHeader>
+
+  <div class="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div class="panel p-4">
+      <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Toplam ekip</p>
+      <p class="mt-3 text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ workspace.team.length }}</p>
+    </div>
+    <div class="panel p-4">
+      <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Tasarım</p>
+      <p class="mt-3 text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ memberRoleCounts.Designer }}</p>
+    </div>
+    <div class="panel p-4">
+      <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Geliştirme</p>
+      <p class="mt-3 text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ memberRoleCounts.Developer }}</p>
+    </div>
+    <div class="panel p-4">
+      <p class="text-xs uppercase tracking-[0.2em] text-slate-400">İçerik ekibi</p>
+      <p class="mt-3 text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ memberRoleCounts['Content Creator'] + memberRoleCounts['Social Media Manager'] }}</p>
+    </div>
+  </div>
 
   <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div class="flex w-full flex-col gap-3 sm:flex-row">
@@ -221,7 +274,7 @@ const deleteMember = async (member: TeamMember) => {
   </div>
   <div v-else class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
     <article
-      v-for="member in filteredTeam"
+      v-for="member in memberLoad"
       :key="member.id"
       class="panel flex min-h-64 flex-col p-5"
     >
@@ -258,6 +311,13 @@ const deleteMember = async (member: TeamMember) => {
         >
           {{ roleLabels[member.role] }}
         </span>
+      </div>
+
+      <div class="mt-4 rounded-xl bg-slate-50 p-3 dark:bg-slate-900">
+        <p class="text-[10px] uppercase tracking-[0.18em] text-slate-400">Yük</p>
+        <p class="mt-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+          {{ member.taskCount }} görev atanmış
+        </p>
       </div>
 
       <div class="mt-auto flex justify-end gap-2 pt-6">
