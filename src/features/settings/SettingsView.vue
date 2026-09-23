@@ -92,12 +92,35 @@ const loadSettings = async () => {
   }
 }
 
+const validationError = computed(() => {
+  if (!profile.name.trim()) return 'Ad soyad alanı zorunlu.'
+  if (!settings.companyName.trim()) return 'Şirket adı alanı zorunlu.'
+  if (settings.website.trim() && !/^https?:\/\//i.test(settings.website.trim())) {
+    return 'Web sitesi http:// veya https:// ile başlamalı.'
+  }
+
+  return ''
+})
+
+const summaryCards = computed(() => [
+  { label: 'Şirket', value: settings.companyName || 'Belirtilmedi' },
+  { label: 'Varsayılan platform', value: settings.defaultPlatform },
+  { label: 'Dil / zaman', value: `${settings.language.toUpperCase()} · ${settings.timezone}` },
+])
+
 const saveSettings = async () => {
   if (!settingsRef.value) {
     const message = 'Ayar kaydetmek icin oturum acmaniz gerekiyor.'
 
     error.value = message
     toast.error(message)
+    return
+  }
+
+  const validationMessage = validationError.value
+  if (validationMessage) {
+    error.value = validationMessage
+    toast.error(validationMessage)
     return
   }
 
@@ -190,7 +213,19 @@ onMounted(() => {
     Ayarlar yukleniyor...
   </div>
 
-  <form v-else class="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]" @submit.prevent="saveSettings">
+  <div v-else>
+    <div class="mb-5 grid gap-4 md:grid-cols-3">
+      <div
+        v-for="item in summaryCards"
+        :key="item.label"
+        class="panel p-4"
+      >
+        <p class="text-xs uppercase tracking-[0.2em] text-slate-400">{{ item.label }}</p>
+        <p class="mt-3 text-lg font-semibold text-slate-900 dark:text-slate-100">{{ item.value }}</p>
+      </div>
+    </div>
+
+    <form class="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]" @submit.prevent="saveSettings">
     <section class="panel p-5">
       <div class="mb-5 flex items-center gap-3">
         <UserRound class="h-5 w-5 text-brand" />
@@ -352,12 +387,17 @@ onMounted(() => {
             <RotateCcw class="h-4 w-4" />
             Varsayılana al
           </button>
-          <button class="btn-primary" type="submit" :disabled="saving">
+          <button class="btn-primary" type="submit" :disabled="saving || !!validationError">
             <Save class="h-4 w-4" />
             {{ saving ? 'Kaydediliyor...' : 'Kaydet' }}
           </button>
         </div>
       </div>
+
+      <div v-if="error || message" class="mt-4 rounded-xl border p-3 text-sm" :class="error ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300' : 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300'">
+        {{ error || message }}
+      </div>
     </section>
-  </form>
+    </form>
+  </div>
 </template>

@@ -15,21 +15,34 @@ export const aiService = {
       `${topic} performans sonuçları paylaşımı`,
     ]
   },
-  async generateContentSuggestions(topic: string, platform = 'Instagram', contentType = 'Post') {
+  async generateContentSuggestions(
+    topic: string,
+    platform = 'Instagram',
+    contentType = 'Post',
+    tone = 'Profesyonel',
+    goal = 'Farkındalık',
+  ) {
     const baseTopic = topic.trim() || 'marka büyümesi'
     const normalizedTopic = baseTopic.replace(/\s+/g, ' ').trim()
     const platformLabel = platform.toLowerCase()
     const typeLabel = contentType.toLowerCase()
+    const toneLabel = tone.toLowerCase()
+    const goalLabel = goal.toLowerCase()
 
     return {
       title: `${normalizedTopic} için ${typeLabel} fikri`,
-      description: `${normalizedTopic} konusunu ${platformLabel} için kısa, dikkat çekici ve etkileşimi artıran bir dille anlatan ${typeLabel} metni. Kullanıcıların ilgisini çeken bir fayda vurgusu ve net bir çağrı ekleyin.`,
+      description: `${normalizedTopic} konusunu ${platformLabel} için ${toneLabel} bir dille anlatan ${typeLabel} metni. ${goalLabel} hedefiyle hazırlanır; başlık, fayda odaklı anlatım ve güven oluşturan CTA kullanılır.`,
+      hook: `${normalizedTopic} için izleyicinin ilk 3 saniyesinde ilgisini çeken güçlü açılış cümlesi.`,
+      cta: 'Yorumlara “Bu çözümü denemek ister misiniz?” yazarak etkileşimi artırın.',
       hashtags: [
         `#${normalizedTopic.replace(/\s+/g, '').toLowerCase()}`,
         '#sosyalmedya',
         '#icerikstratejisi',
         '#dijitalajans',
+        `#${platformLabel}`,
       ],
+      postingPlan: `1) Kısa teaser paylaşımı, 2) ${typeLabel} sürümüne geçiş, 3) yorumlara cevap ve performans izleme.`,
+      audience: `Markasını ${goalLabel} hedefiyle büyütmek isteyen hedef kitle.`,
     }
   },
 }

@@ -303,6 +303,51 @@ const exportExcel = () => {
 
   XLSX.writeFile(workbook, 'agencyflow-rapor.xlsx')
 }
+
+const topPlatform = computed(() => {
+  const platformData = platformLabels.map((label, index) => ({
+    label,
+    value: contentByPlatform.value[index],
+  }))
+
+  return platformData.reduce((best, current) => (current.value > best.value ? current : best), {
+    label: 'Instagram',
+    value: 0,
+  })
+})
+
+const executionSummary = computed(() => [
+  {
+    label: 'En güçlü kanal',
+    value: topPlatform.value.label,
+    detail: `${topPlatform.value.value} içerik planlandı`,
+  },
+  {
+    label: 'Yayın oranı',
+    value: `${metrics.value.contentPublishRate}%`,
+    detail: 'Açık çıkan içeriklerin oranı',
+  },
+  {
+    label: 'Tamamlama hızı',
+    value: `${metrics.value.taskCompletionRate}%`,
+    detail: 'Görevlerden tamamlanan oranı',
+  },
+  {
+    label: 'Onay kuyruğu',
+    value: `${metrics.value.approvalWaiting}`,
+    detail: 'İnceleme bekleyen içerik',
+  },
+])
+
+const recommendations = computed(() => [
+  `En çok içerik üretilen kanal ${topPlatform.value.label} olarak görünüyor; bu platform için ayrılan bütçeyi koruyun.`,
+  metrics.value.approvalWaiting > 0
+    ? 'Onay bekleyen içerikler için haftalık kontrol çağrısı başlatın.'
+    : 'Onay kuyruğu temiz; yayına hazır içerik akışı düzenli görünüyor.',
+  metrics.value.taskCompletionRate < 70
+    ? 'Görev tamamlama oranını artırmak için günlük teslim takibi ve öncelik ataması yapın.'
+    : 'Görev akışı sağlıklı; ekip üretkenliğini koruyun.',
+])
 </script>
 
 <template>
@@ -321,6 +366,18 @@ const exportExcel = () => {
       </button>
     </div>
   </PageHeader>
+
+  <section class="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div
+      v-for="item in executionSummary"
+      :key="item.label"
+      class="panel p-4"
+    >
+      <p class="text-xs uppercase tracking-[0.2em] text-slate-400">{{ item.label }}</p>
+      <p class="mt-3 text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ item.value }}</p>
+      <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">{{ item.detail }}</p>
+    </div>
+  </section>
 
   <div class="grid gap-4 md:grid-cols-2">
     <section class="panel p-5">
@@ -426,4 +483,25 @@ const exportExcel = () => {
       />
     </section>
   </div>
+
+  <section class="mt-6 panel p-5">
+    <div class="flex items-center justify-between gap-3">
+      <div>
+        <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Yönetici özeti</p>
+        <h2 class="mt-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
+          Aksiyon önerileri
+        </h2>
+      </div>
+    </div>
+
+    <div class="mt-4 grid gap-3 md:grid-cols-3">
+      <div
+        v-for="(recommendation, index) in recommendations"
+        :key="index"
+        class="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-200"
+      >
+        {{ recommendation }}
+      </div>
+    </div>
+  </section>
 </template>
