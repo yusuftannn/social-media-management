@@ -51,22 +51,38 @@ const auth = useAuthStore()
 const theme = useThemeStore()
 const workspace = useWorkspaceStore()
 const router = useRouter()
+const dismissedNotificationIds = ref<string[]>([])
+const dismissedNotificationStorageKey = computed(
+  () => `agencyflow:dismissed-notifications:${auth.user?.id ?? 'guest'}`,
+)
+
+const dateKey = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+    date.getDate(),
+  ).padStart(2, '0')}`
+
+const formatNotificationDate = (value: string) =>
+  new Date(`${value}T00:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })
 
 const customerMap = computed(
   () => new Map(workspace.customers.map((customer) => [customer.id, customer.companyName])),
 )
 
 const notifications = computed(() => {
-  const now = new Date()
-  const inSevenDays = 1000 * 60 * 60 * 24 * 7
+  const today = dateKey(new Date())
+  const start = new Date()
+  start.setDate(start.getDate() - 7)
+  const startDate = dateKey(start)
+  const end = new Date()
+  end.setDate(end.getDate() + 7)
+  const endDate = dateKey(end)
 
   const contentAlerts = workspace.contents
     .filter((content) => {
-      const publishDate = new Date(content.publishDate)
       return (
         (content.status === 'Waiting Approval' || content.status === 'Draft') &&
-        !Number.isNaN(publishDate.getTime()) &&
-        publishDate.getTime() - now.getTime() <= inSevenDays
+        content.publishDate >= startDate &&
+        content.publishDate <= endDate
       )
     })
     .map((content) => ({
@@ -76,10 +92,14 @@ const notifications = computed(() => {
       type: 'İçerik',
       path: '/content',
       when: content.publishDate,
+      overdue: content.publishDate < today,
     }))
 
   const taskAlerts = workspace.tasks
-    .filter((task) => task.status !== 'Done')
+    .filter(
+      (task) =>
+        task.status !== 'Done' && task.dueDate >= startDate && task.dueDate <= endDate,
+    )
     .map((task) => ({
       id: `task-${task.id}`,
       title: task.title,
@@ -87,10 +107,14 @@ const notifications = computed(() => {
       type: 'Görev',
       path: '/tasks',
       when: task.dueDate,
+      overdue: task.dueDate < today,
     }))
 
   const projectAlerts = workspace.projects
-    .filter((project) => project.status === 'Active')
+    .filter(
+      (project) =>
+        project.status === 'Active' && project.endDate >= startDate && project.endDate <= endDate,
+    )
     .map((project) => ({
       id: `project-${project.id}`,
       title: project.projectName,
@@ -98,14 +122,33 @@ const notifications = computed(() => {
       type: 'Proje',
       path: '/projects',
       when: project.endDate,
+      overdue: project.endDate < today,
     }))
 
   return [...contentAlerts, ...taskAlerts, ...projectAlerts]
+    .filter((item) => !dismissedNotificationIds.value.includes(item.id))
     .sort((first, second) => new Date(first.when).getTime() - new Date(second.when).getTime())
     .slice(0, 5)
 })
 
 const notificationCount = computed(() => notifications.value.length)
+
+const dismissNotification = (id: string) => {
+  dismissedNotificationIds.value = [...new Set([...dismissedNotificationIds.value, id])].slice(-100)
+
+  try {
+    localStorage.setItem(
+      dismissedNotificationStorageKey.value,
+      JSON.stringify(dismissedNotificationIds.value),
+    )
+  } catch {
+    // Notifications remain dismissible for this session if storage is unavailable.
+  }
+}
+
+const dismissVisibleNotifications = () => {
+  notifications.value.forEach((item) => dismissNotification(item.id))
+}
 
 const searchResults = computed(() => {
   const term = searchQuery.value.trim().toLowerCase()
@@ -151,6 +194,16 @@ const searchResults = computed(() => {
 })
 
 onMounted(() => {
+  try {
+    const storedIds = localStorage.getItem(dismissedNotificationStorageKey.value)
+    const parsedIds: unknown = storedIds ? JSON.parse(storedIds) : []
+    dismissedNotificationIds.value = Array.isArray(parsedIds)
+      ? parsedIds.filter((id): id is string => typeof id === 'string')
+      : []
+  } catch {
+    dismissedNotificationIds.value = []
+  }
+
   void workspace.load()
 })
 
@@ -264,36 +317,62 @@ const logout = async () => {
                   <p class="text-sm font-semibold">Bildirimler</p>
                   <p class="text-[11px] text-slate-500">Öncelikli aksiyonlar</p>
                 </div>
-                <span class="rounded-full bg-blue-50 px-2 py-1 text-[10px] font-medium text-brand dark:bg-blue-950">
-                  {{ notificationCount }} aktif
-                </span>
+                <div class="flex items-center gap-2">
+                  <span class="rounded-full bg-blue-50 px-2 py-1 text-[10px] font-medium text-brand dark:bg-blue-950">
+                    {{ notificationCount }} aktif
+                  </span>
+                  <button
+                    v-if="notificationCount"
+                    class="text-[11px] font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                    type="button"
+                    @click="dismissVisibleNotifications"
+                  >
+                    Temizle
+                  </button>
+                </div>
               </div>
 
               <div v-if="notifications.length" class="space-y-2">
-                <button
+                <div
                   v-for="item in notifications"
                   :key="item.id"
-                  type="button"
-                  class="flex w-full items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800"
-                  @click="openNotification(item.path)"
+                  class="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900"
                 >
-                  <span class="mt-0.5 rounded-lg bg-blue-100 p-1.5 text-brand dark:bg-blue-950">
-                    <Sparkles v-if="item.type === 'İçerik'" class="h-3.5 w-3.5" />
-                    <Clock3 v-else-if="item.type === 'Görev'" class="h-3.5 w-3.5" />
-                    <CalendarCheck v-else class="h-3.5 w-3.5" />
-                  </span>
-                  <span class="min-w-0 flex-1">
-                    <span class="block text-sm font-medium text-slate-800 dark:text-slate-100">
-                      {{ item.title }}
+                  <button
+                    class="flex min-w-0 flex-1 items-start gap-3 text-left"
+                    type="button"
+                    @click="openNotification(item.path)"
+                  >
+                    <span class="mt-0.5 rounded-lg bg-blue-100 p-1.5 text-brand dark:bg-blue-950">
+                      <Sparkles v-if="item.type === 'İçerik'" class="h-3.5 w-3.5" />
+                      <Clock3 v-else-if="item.type === 'Görev'" class="h-3.5 w-3.5" />
+                      <CalendarCheck v-else class="h-3.5 w-3.5" />
                     </span>
-                    <span class="mt-1 block text-xs text-slate-500 dark:text-slate-400">
-                      {{ item.message }}
+                    <span class="min-w-0 flex-1">
+                      <span class="block text-sm font-medium text-slate-800 dark:text-slate-100">
+                        {{ item.title }}
+                      </span>
+                      <span class="mt-1 block text-xs text-slate-500 dark:text-slate-400">
+                        {{ item.message }}
+                      </span>
+                      <span class="mt-1 block text-[10px] uppercase tracking-[0.18em] text-slate-400">
+                        {{ item.type }} ·
+                        <span :class="item.overdue ? 'text-red-600 dark:text-red-400' : ''">
+                          {{ item.overdue ? 'Gecikti' : formatNotificationDate(item.when) }}
+                        </span>
+                      </span>
                     </span>
-                    <span class="mt-1 block text-[10px] uppercase tracking-[0.18em] text-slate-400">
-                      {{ item.type }}
-                    </span>
-                  </span>
-                </button>
+                  </button>
+                  <button
+                    class="rounded p-1 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                    type="button"
+                    :aria-label="`${item.title} bildirimini kapat`"
+                    title="Bildirimi kapat"
+                    @click="dismissNotification(item.id)"
+                  >
+                    <X class="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
 
               <div
